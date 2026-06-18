@@ -21,6 +21,13 @@ def _pick_monster(cfg: GameConfig, depth: int, rng: random.Random):
     return rng.choice(pool)
 
 
+def _consume_buffs(player: Player) -> None:
+    """每成功走一步，所有 Buff 的 steps_left -= 1，归零移除。"""
+    for b in player.buffs:
+        b.steps_left -= 1
+    player.buffs = [b for b in player.buffs if b.steps_left > 0]
+
+
 def explore(player: Player, cfg: GameConfig, now: int,
             rng: random.Random) -> ExploreResult:
     b = cfg.balance
@@ -63,6 +70,7 @@ def explore(player: Player, cfg: GameConfig, now: int,
             total_gold += gold
             total_exp += monster.exp
             player.current_depth += 1
+            _consume_buffs(player)
             steps.append(StepLog(kind="combat", depth=depth, monster=monster.name,
                                  won=True, rounds=res.rounds, gold=gold,
                                  exp=monster.exp, items=drops,
@@ -74,6 +82,7 @@ def explore(player: Player, cfg: GameConfig, now: int,
             player.gold += gold
             total_gold += gold
             player.current_depth += 1
+            _consume_buffs(player)
             steps.append(StepLog(kind="treasure", depth=depth,
                                  gold=gold, hp_after=player.current_hp))
 
@@ -88,6 +97,7 @@ def explore(player: Player, cfg: GameConfig, now: int,
                 defeated = True
                 break
             player.current_depth += 1
+            _consume_buffs(player)
             steps.append(StepLog(kind="trap", depth=depth,
                                  hp_after=player.current_hp,
                                  text=f"踩中陷阱 -{dmg}"))
@@ -95,11 +105,13 @@ def explore(player: Player, cfg: GameConfig, now: int,
         else:  # flavor
             text = rng.choice(event.texts) if event.texts else ""
             player.current_depth += 1
+            _consume_buffs(player)
             steps.append(StepLog(kind="flavor", depth=depth, text=text,
                                  hp_after=player.current_hp))
 
         player.max_depth = max(player.max_depth, player.current_depth)
 
+    player.buffs.clear()
     return ExploreResult(
         steps=steps, total_gold=total_gold, total_exp=total_exp,
         items_gained=items_gained, level_ups=level_ups, defeated=defeated,

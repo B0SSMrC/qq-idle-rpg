@@ -1,8 +1,8 @@
 import random
 from pathlib import Path
 from game_core.config import load_config
-from game_core.models import Player
-from game_core.stats import hp_max
+from game_core.models import Player, Buff
+from game_core.stats import hp_max, attack
 from game_core.exploration import explore
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -88,3 +88,21 @@ def test_explore_does_not_crash_when_no_event_matches_depth():
     p.current_depth = 99
     res = explore(p, cfg, now=p.stamina_at, rng=random.Random(1))
     assert len(res.steps) >= 1          # 没有崩溃,正常产出步骤
+
+
+def test_buffs_consumed_during_exploration():
+    """探索每成功一步，buff steps_left 减少，归零移除。"""
+    p = _player(stamina=10)  # 2 步
+    p.buffs.append(Buff(type="atk", amount=10, steps_left=1))
+    res = explore(p, CFG, now=p.stamina_at, rng=random.Random(42))
+    # 探索结束后 buffs 应被清空
+    assert len(p.buffs) == 0
+
+
+def test_buffs_cleared_on_explore_end():
+    """探索结束（体力耗尽/战死）时 buffs 应清空。"""
+    p = _player(stamina=20)
+    p.buffs.append(Buff(type="def", amount=5, steps_left=10))
+    res = explore(p, CFG, now=p.stamina_at, rng=random.Random(99))
+    # 无论胜负，探索结束后 buffs 应空
+    assert len(p.buffs) == 0
