@@ -1,0 +1,18 @@
+- id: combat
+  type: combat
+  weight: 60
+- id: treasure
+  type: treasure
+  weight: 20
+  reward_gold: [10, 30]
+- id: trap
+  type: trap
+  weight: 10
+  damage_pct: 0.1
+- id: flavor
+  type: flavor
+  weight: 10
+  texts:
+    - "走廊空荡荡的,只有水滴回声。"
+    - "墙上的火把忽明忽暗。"
+    - "你听见远处有什么东西在爬动。"
