@@ -23,8 +23,11 @@ cp .env.example .env
 
 ```dotenv
 DRIVER=~fastapi+~httpx
+COMMAND_START=["", "/"]
 QQ_BOTS='[{"id": "你的AppID", "token": "你的Token", "secret": "你的AppSecret"}]'
 ```
+
+> `COMMAND_START` 含空字符串,群里 @机器人 发「注册」等裸关键词(无 `/`)才能触发。
 
 ### 3. 运行
 
