@@ -24,7 +24,8 @@ def _pick_monster(cfg: GameConfig, depth: int, rng: random.Random):
 def explore(player: Player, cfg: GameConfig, now: int,
             rng: random.Random) -> ExploreResult:
     b = cfg.balance
-    stamina_mod.settle_stamina(player, now, b.stamina_regen_minutes, b.stamina_max)
+    stamina_mod.settle_stamina(player, now, b.stamina_regen_minutes, b.stamina_max,
+                               b.stamina_regen_amount)
     player.last_active_at = now
 
     steps: list[StepLog] = []

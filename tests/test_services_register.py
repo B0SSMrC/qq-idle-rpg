@@ -42,12 +42,14 @@ def test_same_user_cannot_register_twice():
 def test_status_settles_stamina_and_persists():
     conn = _conn()
     register(conn, CFG, "g", "u", "小明", now=0)
-    # 过 60 分钟后查状态,应已结算出体力(每5分钟+1 → 12)
+    b = CFG.balance
+    expect = min(b.stamina_max, (60 // b.stamina_regen_minutes) * b.stamina_regen_amount)
+    # 过 60 分钟后查状态,应已按配置结算出体力
     p = status(conn, CFG, "g", "u", now=60 * 60)
-    assert p.stamina == 12
+    assert p.stamina == expect
     # 再查一次(同一时刻)不应继续增长
     p2 = status(conn, CFG, "g", "u", now=60 * 60)
-    assert p2.stamina == 12
+    assert p2.stamina == expect
 
 
 def test_status_missing_character_raises():

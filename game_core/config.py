@@ -35,6 +35,7 @@ def load_config(data_dir: Path) -> GameConfig:
         base_atk=b["base_stats"]["atk"],
         base_def=b["base_stats"]["def"],
         gold_loss_pct=float(b["defeat_penalty"]["gold_loss_pct"]),
+        stamina_regen_amount=b["stamina"].get("regen_amount", 1),
     )
 
     monsters: dict[str, MonsterDef] = {}
@@ -76,8 +77,9 @@ def load_config(data_dir: Path) -> GameConfig:
 def validate_config(cfg: GameConfig) -> None:
     # 数值旋钮:正值校验(否则会导致除零或探索死循环)
     b = cfg.balance
-    if b.stamina_regen_minutes <= 0 or b.stamina_cost_per_step <= 0:
-        raise ConfigError("stamina 的 regen_minutes / cost_per_step 必须为正")
+    if (b.stamina_regen_minutes <= 0 or b.stamina_cost_per_step <= 0
+            or b.stamina_regen_amount <= 0):
+        raise ConfigError("stamina 的 regen_minutes / cost_per_step / regen_amount 必须为正")
     # 物品槽位合法
     for it in cfg.items.values():
         if it.slot not in VALID_SLOTS:

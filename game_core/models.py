@@ -64,6 +64,7 @@ class Balance:
     base_atk: int
     base_def: int
     gold_loss_pct: float
+    stamina_regen_amount: int = 1   # 每次结算回多少点(默认1=旧行为)
 
 
 @dataclass
