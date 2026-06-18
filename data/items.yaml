@@ -1,24 +1,266 @@
-- id: rusty_sword
-  name: 生锈的铁剑
+# ===== 武器 - 剑（均衡：攻击+少量防御）=====
+- id: iron_sword
+  name: 铁剑
   slot: weapon
   atk: 5
   rarity: common
   price: 50
-- id: iron_sword
-  name: 精铁长剑
+- id: fine_steel_sword
+  name: 百炼钢剑
+  slot: weapon
+  atk: 9
+  def: 1
+  rarity: uncommon
+  price: 125
+- id: cold_iron_sword
+  name: 寒铁剑
+  slot: weapon
+  atk: 14
+  def: 2
+  rarity: rare
+  price: 300
+- id: dark_abyss_sword
+  name: 玄冥重剑
+  slot: weapon
+  atk: 23
+  def: 3
+  rarity: epic
+  price: 750
+- id: dragon_slayer_sword
+  name: 斩龙剑
+  slot: weapon
+  atk: 35
+  def: 5
+  rarity: legendary
+
+# ===== 武器 - 刀（高攻，无防御）=====
+- id: plain_blade
+  name: 朴刀
+  slot: weapon
+  atk: 7
+  rarity: common
+  price: 50
+- id: goose_wing_blade
+  name: 雁翎刀
   slot: weapon
   atk: 12
   rarity: uncommon
-  price: 200
-- id: leather_armor
-  name: 皮甲
+  price: 125
+- id: hundred_forged_blade
+  name: 百辟刀
+  slot: weapon
+  atk: 20
+  rarity: rare
+  price: 300
+- id: long_haft_blade
+  name: 陌刀
+  slot: weapon
+  atk: 32
+  rarity: epic
+  price: 750
+- id: green_dragon_blade
+  name: 青龙偃月
+  slot: weapon
+  atk: 49
+  rarity: legendary
+
+# ===== 武器 - 长兵（攻击+HP）=====
+- id: bamboo_spear
+  name: 竹枪
+  slot: weapon
+  atk: 4
+  hp: 10
+  rarity: common
+  price: 50
+- id: steel_point_spear
+  name: 点钢枪
+  slot: weapon
+  atk: 7
+  hp: 20
+  rarity: uncommon
+  price: 125
+- id: hook_sickle_spear
+  name: 钩镰枪
+  slot: weapon
+  atk: 11
+  hp: 35
+  rarity: rare
+  price: 300
+- id: serpent_spear
+  name: 丈八蛇矛
+  slot: weapon
+  atk: 18
+  hp: 55
+  rarity: epic
+  price: 750
+- id: heaven_piercer_halberd
+  name: 方天画戟
+  slot: weapon
+  atk: 28
+  hp: 80
+  rarity: legendary
+
+# ===== 武器 - 暗器（高攻+负防御）=====
+- id: flying_stone
+  name: 飞蝗石
+  slot: weapon
+  atk: 8
+  def: -2
+  rarity: common
+  price: 50
+- id: plum_blossom_dart
+  name: 梅花镖
+  slot: weapon
+  atk: 14
+  def: -3
+  rarity: uncommon
+  price: 125
+- id: bone_penetrating_nail
+  name: 透骨钉
+  slot: weapon
+  atk: 22
+  def: -5
+  rarity: rare
+  price: 300
+- id: soul_chaser_needle
+  name: 追魂针
+  slot: weapon
+  atk: 35
+  def: -8
+  rarity: epic
+  price: 750
+- id: storm_of_needles
+  name: 暴雨梨花
+  slot: weapon
+  atk: 55
+  def: -12
+  rarity: legendary
+
+# ===== 护甲 - 轻甲（高HP+低防御）=====
+- id: cloth_armor
+  name: 布甲
   slot: armor
-  def: 4
+  def: 2
   hp: 20
   rarity: common
   price: 80
+- id: leather_armor
+  name: 皮铠
+  slot: armor
+  def: 3
+  hp: 35
+  rarity: uncommon
+  price: 200
+- id: rhino_hide_armor
+  name: 犀皮甲
+  slot: armor
+  def: 5
+  hp: 55
+  rarity: rare
+  price: 480
+- id: turtle_shell_armor
+  name: 玄龟甲
+  slot: armor
+  def: 8
+  hp: 85
+  rarity: epic
+  price: 1200
+- id: black_tortoise_armor
+  name: 玄武灵甲
+  slot: armor
+  def: 12
+  hp: 130
+  rarity: legendary
+
+# ===== 护甲 - 重甲（高防御+低HP）=====
+- id: iron_scale_armor
+  name: 铁札甲
+  slot: armor
+  def: 5
+  hp: 10
+  rarity: common
+  price: 80
+- id: bright_mirror_armor
+  name: 明光铠
+  slot: armor
+  def: 8
+  hp: 18
+  rarity: uncommon
+  price: 200
+- id: heart_protector_armor
+  name: 护心铠
+  slot: armor
+  def: 13
+  hp: 28
+  rarity: rare
+  price: 480
+- id: mountain_pattern_armor
+  name: 山文甲
+  slot: armor
+  def: 20
+  hp: 45
+  rarity: epic
+  price: 1200
+- id: diamond_body_armor
+  name: 金刚不坏铠
+  slot: armor
+  def: 32
+  hp: 70
+  rarity: legendary
+
+# ===== 消耗品 - 治疗 =====
 - id: hp_potion
-  name: 治疗药水
+  name: 金疮药
   slot: consumable
-  heal: 50
-  price: 20
+  heal: 30
+  price: 15
+- id: greater_hp_potion
+  name: 续命丹
+  slot: consumable
+  heal: 80
+  price: 40
+- id: supreme_hp_potion
+  name: 九转还魂丹
+  slot: consumable
+  heal: 200
+  price: 100
+
+# ===== 消耗品 - 攻击 Buff =====
+- id: atk_potion_minor
+  name: 蛮牛散
+  slot: consumable
+  buff_type: atk
+  buff_value: 10
+  buff_steps: 4
+  price: 30
+- id: atk_potion_major
+  name: 虎骨酒
+  slot: consumable
+  buff_type: atk
+  buff_value: 20
+  buff_steps: 6
+  price: 70
+
+# ===== 消耗品 - 防御 Buff =====
+- id: def_potion_minor
+  name: 铁皮膏
+  slot: consumable
+  buff_type: def
+  buff_value: 8
+  buff_steps: 4
+  price: 25
+- id: def_potion_major
+  name: 金钟罩符
+  slot: consumable
+  buff_type: def
+  buff_value: 16
+  buff_steps: 6
+  price: 60
+
+# ===== 消耗品 - 体力 =====
+- id: stamina_potion
+  name: 回气丹
+  slot: consumable
+  buff_type: stamina
+  buff_value: 50
+  price: 80

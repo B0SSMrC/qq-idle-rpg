@@ -26,9 +26,9 @@ def test_full_lifecycle():
         assert res.depth_after >= 1
 
     # 攒了金币就买把剑并装备(若买得起)
-    if p.gold >= CFG.items["rusty_sword"].price:
-        buy(p, "rusty_sword", CFG)
-        equip(p, "rusty_sword", CFG)
+    if p.gold >= CFG.items["iron_sword"].price:
+        buy(p, "iron_sword", CFG)
+        equip(p, "iron_sword", CFG)
         # 装备后攻击力应高于基础
         from game_core.stats import attack
         assert attack(p, CFG) > CFG.balance.base_atk

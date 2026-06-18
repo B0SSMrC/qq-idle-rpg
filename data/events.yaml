@@ -1,18 +1,62 @@
+# combat 事件（怪物池随 depth 切换，权重最大）
 - id: combat
   type: combat
   weight: 60
-- id: treasure
+
+# 宝箱 — 按深度 3 档
+- id: treasure_shallow
   type: treasure
   weight: 20
-  reward_gold: [10, 30]
-- id: trap
+  depth_min: 1
+  depth_max: 15
+  reward_gold: [15, 40]
+
+- id: treasure_mid
+  type: treasure
+  weight: 20
+  depth_min: 16
+  depth_max: 35
+  reward_gold: [35, 75]
+
+- id: treasure_deep
+  type: treasure
+  weight: 20
+  depth_min: 36
+  depth_max: 50
+  reward_gold: [70, 150]
+
+# 陷阱 — 按深度 3 档
+- id: trap_shallow
   type: trap
-  weight: 10
-  damage_pct: 0.1
+  weight: 12
+  depth_min: 1
+  depth_max: 20
+  damage_pct: 0.08
+
+- id: trap_mid
+  type: trap
+  weight: 12
+  depth_min: 21
+  depth_max: 35
+  damage_pct: 0.12
+
+- id: trap_deep
+  type: trap
+  weight: 12
+  depth_min: 36
+  depth_max: 50
+  damage_pct: 0.15
+
+# flavor — 中式地牢叙事
 - id: flavor
   type: flavor
-  weight: 10
+  weight: 8
   texts:
-    - "走廊空荡荡的,只有水滴回声。"
+    - "走廊空荡荡的，只有水滴回声。"
     - "墙上的火把忽明忽暗。"
     - "你听见远处有什么东西在爬动。"
+    - "岩壁上刻着古篆符咒，微微发着幽光。"
+    - "石棺中传来低沉的呓语，你侧身绕了过去。"
+    - "磷火在廊道尽头飘荡，映出几道人影。"
+    - "一阵阴风从深处涌来，脚下石板簌簌作响。"
+    - "拐角处散落着前人的遗物，已腐朽得不成样子。"

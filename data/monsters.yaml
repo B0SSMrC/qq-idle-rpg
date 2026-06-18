@@ -5,9 +5,10 @@
   atk: 5
   def: 1
   exp: 15
-  gold: [3, 8]
+  gold: [5, 10]
   drops:
-    - { item: rusty_sword, chance: 0.05 }
+    - { item: iron_sword, chance: 0.05 }
+
 - id: goblin
   name: 哥布林
   depth: [3, 10]
@@ -15,17 +16,103 @@
   atk: 12
   def: 3
   exp: 30
-  gold: [8, 18]
+  gold: [12, 22]
   drops:
     - { item: leather_armor, chance: 0.04 }
     - { item: hp_potion, chance: 0.10 }
+
 - id: skeleton
   name: 骷髅战士
-  depth: [8, 20]
+  depth: [6, 16]
   hp: 120
   atk: 22
   def: 8
   exp: 60
-  gold: [15, 35]
+  gold: [22, 42]
   drops:
-    - { item: iron_sword, chance: 0.03 }
+    - { item: fine_steel_sword, chance: 0.03 }
+
+- id: stone_golem
+  name: 石魔像
+  depth: [12, 24]
+  hp: 200
+  atk: 35
+  def: 15
+  exp: 100
+  gold: [40, 70]
+  drops:
+    - { item: steel_point_spear, chance: 0.03 }
+    - { item: atk_potion_minor, chance: 0.08 }
+
+- id: shadow_assassin
+  name: 暗影刺客
+  depth: [18, 30]
+  hp: 160
+  atk: 55
+  def: 5
+  exp: 130
+  gold: [50, 85]
+  drops:
+    - { item: plum_blossom_dart, chance: 0.03 }
+    - { item: def_potion_minor, chance: 0.08 }
+
+- id: serpent_demon
+  name: 蛇妖
+  depth: [24, 36]
+  hp: 280
+  atk: 50
+  def: 20
+  exp: 170
+  gold: [65, 105]
+  drops:
+    - { item: cold_iron_sword, chance: 0.02 }
+    - { item: rhino_hide_armor, chance: 0.02 }
+
+- id: corpse_general
+  name: 尸将
+  depth: [30, 42]
+  hp: 350
+  atk: 65
+  def: 28
+  exp: 210
+  gold: [80, 130]
+  drops:
+    - { item: hook_sickle_spear, chance: 0.02 }
+    - { item: atk_potion_major, chance: 0.06 }
+
+- id: asura_warrior
+  name: 修罗武者
+  depth: [36, 48]
+  hp: 300
+  atk: 85
+  def: 18
+  exp: 250
+  gold: [90, 145]
+  drops:
+    - { item: bone_penetrating_nail, chance: 0.02 }
+    - { item: def_potion_major, chance: 0.05 }
+
+- id: black_dragon
+  name: 黑蛟
+  depth: [40, 50]
+  hp: 450
+  atk: 78
+  def: 35
+  exp: 300
+  gold: [110, 170]
+  drops:
+    - { item: dark_abyss_sword, chance: 0.015 }
+    - { item: mountain_pattern_armor, chance: 0.015 }
+
+- id: ancient_demon_king
+  name: 上古妖王
+  depth: [44, 50]
+  hp: 550
+  atk: 95
+  def: 42
+  exp: 380
+  gold: [140, 210]
+  drops:
+    - { item: long_haft_blade, chance: 0.01 }
+    - { item: serpent_spear, chance: 0.01 }
+    - { item: supreme_hp_potion, chance: 0.08 }

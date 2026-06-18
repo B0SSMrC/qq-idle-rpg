@@ -36,7 +36,7 @@ def test_save_persists_changes_and_inventory():
     p = create_player(conn, _player())
     p.level = 5
     p.gold = 123
-    p.inventory.append(InventoryItem(item_id="rusty_sword", quantity=1, equipped=True))
+    p.inventory.append(InventoryItem(item_id="iron_sword", quantity=1, equipped=True))
     p.inventory.append(InventoryItem(item_id="hp_potion", quantity=3, equipped=False))
     save_player(conn, p)
 
@@ -44,7 +44,7 @@ def test_save_persists_changes_and_inventory():
     assert loaded.level == 5
     assert loaded.gold == 123
     inv = {i.item_id: i for i in loaded.inventory}
-    assert inv["rusty_sword"].equipped is True
+    assert inv["iron_sword"].equipped is True
     assert inv["hp_potion"].quantity == 3
 
 

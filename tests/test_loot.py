@@ -20,10 +20,10 @@ def _player():
 def test_roll_drops_respects_chance():
     m = MonsterDef(id="m", name="怪", depth_min=1, depth_max=5, hp=10, atk=1,
                    defense=1, exp=5, gold_min=1, gold_max=2,
-                   drops=[DropDef(item="rusty_sword", chance=1.0),
+                   drops=[DropDef(item="iron_sword", chance=1.0),
                           DropDef(item="hp_potion", chance=0.0)])
     got = roll_drops(m, random.Random(0))
-    assert got == ["rusty_sword"]      # chance=1 必掉,chance=0 必不掉
+    assert got == ["iron_sword"]      # chance=1 必掉,chance=0 必不掉
 
 
 def test_add_item_stacks():
@@ -37,18 +37,18 @@ def test_add_item_stacks():
 
 def test_equip_and_unequip():
     p = _player()
-    add_item(p, "rusty_sword")
-    equip(p, "rusty_sword", CFG)
-    assert any(i.item_id == "rusty_sword" and i.equipped for i in p.inventory)
-    unequip(p, "rusty_sword", CFG)
+    add_item(p, "iron_sword")
+    equip(p, "iron_sword", CFG)
+    assert any(i.item_id == "iron_sword" and i.equipped for i in p.inventory)
+    unequip(p, "iron_sword", CFG)
     assert all(not i.equipped for i in p.inventory)
 
 
 def test_equip_replaces_same_slot():
     p = _player()
-    add_item(p, "rusty_sword")
     add_item(p, "iron_sword")
-    equip(p, "rusty_sword", CFG)
+    add_item(p, "iron_sword")
+    equip(p, "iron_sword", CFG)
     equip(p, "iron_sword", CFG)        # 同为 weapon,应自动换下旧的
     equipped = [i.item_id for i in p.inventory if i.equipped]
     assert equipped == ["iron_sword"]
@@ -64,7 +64,7 @@ def test_equip_consumable_rejected():
 def test_equip_missing_item_raises():
     p = _player()
     with pytest.raises(ItemNotFound):
-        equip(p, "rusty_sword", CFG)
+        equip(p, "iron_sword", CFG)
 
 
 def test_use_potion_heals_and_consumes():
@@ -72,7 +72,7 @@ def test_use_potion_heals_and_consumes():
     p.current_hp = 10
     add_item(p, "hp_potion")
     use_item(p, "hp_potion", CFG)
-    assert p.current_hp == min(hp_max(p, CFG), 10 + 50)
+    assert p.current_hp == min(hp_max(p, CFG), 10 + 30)
     assert all(i.item_id != "hp_potion" for i in p.inventory)   # 用完移除
 
 

@@ -43,21 +43,21 @@ def test_do_buy_and_equip_persist():
     p.gold = 100
     repo.save_player(conn, p)
 
-    do_buy(conn, CFG, "g", "u", "生锈的铁剑")     # 中文名购买,价 50
+    do_buy(conn, CFG, "g", "u", "铁剑")     # 中文名购买,价 50
     after_buy = repo.get_player(conn, "g", "u")
     assert after_buy.gold == 50
-    assert any(i.item_id == "rusty_sword" for i in after_buy.inventory)
+    assert any(i.item_id == "iron_sword" for i in after_buy.inventory)
 
-    do_equip(conn, CFG, "g", "u", "生锈的铁剑")
+    do_equip(conn, CFG, "g", "u", "铁剑")
     after_equip = repo.get_player(conn, "g", "u")
-    assert any(i.item_id == "rusty_sword" and i.equipped for i in after_equip.inventory)
+    assert any(i.item_id == "iron_sword" and i.equipped for i in after_equip.inventory)
 
 
 def test_do_buy_insufficient_gold():
     conn = _conn()
     register(conn, CFG, "g", "u", "小明", now=0)   # 0 金币
     with pytest.raises(NotEnoughGold):
-        do_buy(conn, CFG, "g", "u", "精铁长剑")    # 价 200
+        do_buy(conn, CFG, "g", "u", "百炼钢剑")    # 价 125
 
 
 def test_do_use_potion():
@@ -67,9 +67,9 @@ def test_do_use_potion():
     p.current_hp = 10
     p.inventory.append(InventoryItem(item_id="hp_potion", quantity=1))
     repo.save_player(conn, p)
-    do_use(conn, CFG, "g", "u", "治疗药水")
+    do_use(conn, CFG, "g", "u", "金疮药")
     after = repo.get_player(conn, "g", "u")
-    assert after.current_hp == 60                 # 10 + 50
+    assert after.current_hp == 40                 # 10 + 30
     assert all(i.item_id != "hp_potion" for i in after.inventory)
 
 

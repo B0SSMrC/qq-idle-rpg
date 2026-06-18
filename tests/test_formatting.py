@@ -22,7 +22,7 @@ def test_render_explore_contains_key_facts():
         steps=[StepLog(kind="combat", depth=4, monster="史莱姆", won=True,
                        rounds=2, gold=6, exp=15, hp_after=88),
                StepLog(kind="treasure", depth=5, gold=24, hp_after=88)],
-        total_gold=30, total_exp=15, items_gained=["rusty_sword"],
+        total_gold=30, total_exp=15, items_gained=["iron_sword"],
         level_ups=1, defeated=False, stamina_left=0,
         depth_before=3, depth_after=6, hp_after=88, hp_max=120)
     text = render_explore(_player(), res, CFG)
@@ -59,18 +59,18 @@ def test_render_ranking_lists_names_with_rank():
 
 def test_render_shop_lists_priced_items():
     text = render_shop(CFG)
-    assert "治疗药水" in text
-    assert "20" in text          # 价格
+    assert "金疮药" in text
+    assert "15" in text          # 金疮药价格
 
 
 def test_render_inventory_lists_items_and_equipped():
     p = _player()
-    p.inventory = [InventoryItem(item_id="rusty_sword", quantity=1, equipped=True),
+    p.inventory = [InventoryItem(item_id="iron_sword", quantity=1, equipped=True),
                    InventoryItem(item_id="hp_potion", quantity=3, equipped=False)]
     text = render_inventory(p, CFG)
-    assert "生锈的铁剑" in text
+    assert "铁剑" in text
     assert "已装备" in text
-    assert "治疗药水" in text
+    assert "金疮药" in text
     assert "3" in text           # 数量
 
 

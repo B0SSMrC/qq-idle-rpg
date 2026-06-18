@@ -29,13 +29,13 @@ def test_stats_grow_with_level():
 
 def test_equipped_items_add_stats():
     p = _player(level=1, inv=[
-        InventoryItem(item_id="rusty_sword", equipped=True),   # atk +5
-        InventoryItem(item_id="leather_armor", equipped=True), # def +4, hp +20
+        InventoryItem(item_id="iron_sword", equipped=True),   # atk +5
+        InventoryItem(item_id="leather_armor", equipped=True), # def +3, hp +35
         InventoryItem(item_id="hp_potion", equipped=False),    # 未装备,不计
     ])
     assert attack(p, CFG) == 10 + 5
-    assert defense(p, CFG) == 5 + 4
-    assert hp_max(p, CFG) == 100 + 20
+    assert defense(p, CFG) == 5 + 3
+    assert hp_max(p, CFG) == 100 + 35
 
 
 def test_power_formula():
