@@ -9,6 +9,7 @@ dependencies = [
     "nonebot2[httpx]>=2.3",
     "nonebot2[websockets]>=2.3",
     "nonebot-adapter-qq>=1.5",
+    "mcp[cli]>=1.2",
 ]
 
 [project.optional-dependencies]
@@ -17,7 +18,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["game_core*", "storage*", "app*", "bot*"]
+include = ["game_core*", "storage*", "app*", "bot*", "mcp_server*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
