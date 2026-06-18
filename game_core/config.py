@@ -106,3 +106,15 @@ def validate_config(cfg: GameConfig) -> None:
             raise ConfigError(f"事件 {e.id} reward_gold 范围非法")
     if not any(e.type == "combat" for e in cfg.events):
         raise ConfigError("至少需要一个 combat 事件")
+
+
+def find_item_id(cfg: GameConfig, query: str) -> str:
+    """按 item_id 或中文名解析出 item_id;找不到抛 ItemNotFound。"""
+    from game_core.errors import ItemNotFound
+    query = query.strip()
+    if query in cfg.items:
+        return query
+    for it in cfg.items.values():
+        if it.name == query:
+            return it.id
+    raise ItemNotFound(f"没有这件物品: {query}")
