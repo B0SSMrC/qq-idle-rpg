@@ -1,23 +1,31 @@
-"""RPG 命令插件 — 对接 nonebot-adapter-qq GroupAtMessageCreateEvent。
+"""RPG 命令插件 — 兼容 nonebot-adapter-qq 的单聊/群/频道三种消息事件。
 
 已验证的适配器 API (nonebot-adapter-qq 1.7.1):
-  事件类:  GroupAtMessageCreateEvent  (继承 GroupMessageCreateEvent)
-  Group id: event.group_openid        (str)
-  User id:  event.author.member_openid (str, author: GroupMemberAuthor)
-  回复:     await bot.send(event, text)
-            → Bot.send() 路由到 send_to_group(group_openid=event.group_openid, ...)
+  事件类:
+    C2CMessageCreateEvent      单聊(私信)   user = author.user_openid
+    GroupAtMessageCreateEvent  群 @消息       user = author.member_openid,group = group_openid
+    AtMessageCreateEvent       频道 @消息     user = author.id,            guild = guild_id
+  三者都有 event.get_user_id() 与 event.to_me;回复统一 await bot.send(event, text)。
+
+「世界/排行榜范围」(对应存档的 group_id):
+  群   → group_openid
+  单聊 → 常量 "c2c"(同一私聊世界,所有私聊玩家同榜)
+  频道 → "guild_{guild_id}"(同一频道服务器同榜)
 """
 from __future__ import annotations
 
 import random
-from typing import Any
 
 import nonebot
 from nonebot import on_command
 from nonebot.rule import to_me
 from nonebot.adapters import Bot, Event
 
-from nonebot.adapters.qq import GroupAtMessageCreateEvent
+from nonebot.adapters.qq import (
+    GroupAtMessageCreateEvent,
+    C2CMessageCreateEvent,
+    AtMessageCreateEvent,
+)
 
 import bot.state as state
 from app import services
@@ -33,28 +41,44 @@ from storage import repository as repo
 
 logger = nonebot.log.logger
 
+
 # ---------------------------------------------------------------------------
-# helpers
+# 范围解析 / 通用工具
 # ---------------------------------------------------------------------------
 
 
-def _ids(event: GroupAtMessageCreateEvent) -> tuple[str, str]:
-    """Return (group_id, user_id) from a group at-message event."""
-    return event.group_openid, event.author.member_openid
+def _scope(event: Event) -> tuple[str, str]:
+    """返回 (group_id, user_id):group_id 是排行榜/世界范围,因事件类型而异。"""
+    uid = event.get_user_id()
+    if isinstance(event, GroupAtMessageCreateEvent):
+        return event.group_openid, uid
+    if isinstance(event, AtMessageCreateEvent):
+        return f"guild_{event.guild_id}", uid
+    if isinstance(event, C2CMessageCreateEvent):
+        return "c2c", uid
+    return "unknown", uid
 
 
-async def _reply(bot: Bot, event: Event, text: str) -> Any:
+def _arg(event: Event, *cmd_words: str) -> str:
+    """从消息纯文本里剥掉指令词,返回参数部分。"""
+    text = event.get_plaintext().strip()
+    for w in cmd_words:
+        text = text.removeprefix(w)
+    return text.strip()
+
+
+async def _reply(bot: Bot, event: Event, text: str):
     return await bot.send(event, text)
 
 
-async def _guard(bot: Bot, event: GroupAtMessageCreateEvent, coro):
-    """Await *coro* with shared GameError / Exception guard."""
+async def _guard(bot: Bot, event: Event, coro):
+    """统一守卫:GameError → 友好提示;其它异常 → 记日志 + 通用提示,绝不外泄堆栈。"""
     try:
         await coro
     except GameError as e:
         await _reply(bot, event, str(e))
     except Exception:
-        logger.exception("未处理的异常")
+        logger.exception("RPG 指令处理异常")
         await _reply(bot, event, "⚠️ 出了点小问题,已记录,稍后再试~")
 
 
@@ -66,13 +90,12 @@ cmd_register = on_command("注册", aliases={"创建"}, rule=to_me(), priority=1
 
 
 @cmd_register.handle()
-async def handle_register(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    name = raw.removeprefix("注册").removeprefix("创建").strip()
+async def handle_register(bot: Bot, event: Event):
+    name = _arg(event, "注册", "创建")
     if not name:
-        await _reply(bot, event, "用法:@bot 注册 角色名")
+        await _reply(bot, event, "用法:注册 角色名(群里/频道里需 @机器人)")
         return
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -90,8 +113,8 @@ cmd_explore = on_command("探索", aliases={"下潜", "冒险"}, rule=to_me(), p
 
 
 @cmd_explore.handle()
-async def handle_explore(bot: Bot, event: GroupAtMessageCreateEvent):
-    gid, uid = _ids(event)
+async def handle_explore(bot: Bot, event: Event):
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -112,8 +135,8 @@ cmd_status = on_command("状态", aliases={"我", "角色"}, rule=to_me(), prior
 
 
 @cmd_status.handle()
-async def handle_status(bot: Bot, event: GroupAtMessageCreateEvent):
-    gid, uid = _ids(event)
+async def handle_status(bot: Bot, event: Event):
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -131,8 +154,8 @@ cmd_inventory = on_command("背包", aliases={"物品"}, rule=to_me(), priority=
 
 
 @cmd_inventory.handle()
-async def handle_inventory(bot: Bot, event: GroupAtMessageCreateEvent):
-    gid, uid = _ids(event)
+async def handle_inventory(bot: Bot, event: Event):
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -153,13 +176,12 @@ cmd_equip = on_command("装备", rule=to_me(), priority=10, block=True)
 
 
 @cmd_equip.handle()
-async def handle_equip(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    item_query = raw.removeprefix("装备").strip()
+async def handle_equip(bot: Bot, event: Event):
+    item_query = _arg(event, "装备")
     if not item_query:
-        await _reply(bot, event, "用法:@bot 装备 物品名")
+        await _reply(bot, event, "用法:装备 物品名")
         return
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -177,13 +199,12 @@ cmd_unequip = on_command("卸下", rule=to_me(), priority=10, block=True)
 
 
 @cmd_unequip.handle()
-async def handle_unequip(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    item_query = raw.removeprefix("卸下").strip()
+async def handle_unequip(bot: Bot, event: Event):
+    item_query = _arg(event, "卸下")
     if not item_query:
-        await _reply(bot, event, "用法:@bot 卸下 物品名")
+        await _reply(bot, event, "用法:卸下 物品名")
         return
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -201,13 +222,12 @@ cmd_use = on_command("使用", rule=to_me(), priority=10, block=True)
 
 
 @cmd_use.handle()
-async def handle_use(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    item_query = raw.removeprefix("使用").strip()
+async def handle_use(bot: Bot, event: Event):
+    item_query = _arg(event, "使用")
     if not item_query:
-        await _reply(bot, event, "用法:@bot 使用 物品名")
+        await _reply(bot, event, "用法:使用 物品名")
         return
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -225,7 +245,7 @@ cmd_shop = on_command("商店", rule=to_me(), priority=10, block=True)
 
 
 @cmd_shop.handle()
-async def handle_shop(bot: Bot, event: GroupAtMessageCreateEvent):
+async def handle_shop(bot: Bot, event: Event):
     await _reply(bot, event, render_shop(state.CFG))
 
 
@@ -237,13 +257,12 @@ cmd_buy = on_command("购买", aliases={"买"}, rule=to_me(), priority=10, block
 
 
 @cmd_buy.handle()
-async def handle_buy(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    item_query = raw.removeprefix("购买").removeprefix("买").strip()
+async def handle_buy(bot: Bot, event: Event):
+    item_query = _arg(event, "购买", "买")
     if not item_query:
-        await _reply(bot, event, "用法:@bot 购买 物品名")
+        await _reply(bot, event, "用法:购买 物品名")
         return
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -264,11 +283,10 @@ cmd_ranking = on_command("排行榜", aliases={"排名"}, rule=to_me(), priority
 
 
 @cmd_ranking.handle()
-async def handle_ranking(bot: Bot, event: GroupAtMessageCreateEvent):
-    raw = str(event.get_message()).strip()
-    arg = raw.removeprefix("排行榜").removeprefix("排名").strip()
+async def handle_ranking(bot: Bot, event: Event):
+    arg = _arg(event, "排行榜", "排名")
     key = "depth" if arg in ("深度", "depth") else "level"
-    gid, uid = _ids(event)
+    gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
@@ -282,7 +300,7 @@ async def handle_ranking(bot: Bot, event: GroupAtMessageCreateEvent):
 # 帮助 / 菜单 / ?
 # ---------------------------------------------------------------------------
 
-_HELP_TEXT = """🎮 挂机RPG 指令菜单(@bot + 指令)
+_HELP_TEXT = """🎮 挂机RPG 指令菜单
 ──────────────
 注册 <名字>   — 创建角色
 探索         — 下潜冒险(消耗体力)
@@ -296,11 +314,11 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单(@bot + 指令)
 排行榜       — 等级榜
 排行榜 深度   — 深度榜
 ──────────────
-体力满时发「探索」,获得装备后「装备」,血量低时「购买 治疗药水」"""
+私聊直接发指令;群里/频道里需 @机器人。体力满时发「探索」一口气结算。"""
 
 cmd_help = on_command("帮助", aliases={"菜单", "?"}, rule=to_me(), priority=10, block=True)
 
 
 @cmd_help.handle()
-async def handle_help(bot: Bot, event: GroupAtMessageCreateEvent):
+async def handle_help(bot: Bot, event: Event):
     await _reply(bot, event, _HELP_TEXT)
