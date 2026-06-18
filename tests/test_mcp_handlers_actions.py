@@ -42,20 +42,20 @@ def test_buy_then_equip():
     h_register(conn, CFG, "w", "u", "小明", now=0)
     p = repo.get_player(conn, "w", "u"); p.gold = 100; repo.save_player(conn, p)
 
-    buy = h_buy(conn, CFG, "w", "u", "生锈的铁剑")
+    buy = h_buy(conn, CFG, "w", "u", "铁剑")
     assert buy["ok"] is True
     assert buy["player"]["gold"] == 50
 
-    eq = h_equip(conn, CFG, "w", "u", "生锈的铁剑")
+    eq = h_equip(conn, CFG, "w", "u", "铁剑")
     assert eq["ok"] is True
-    assert "生锈的铁剑" in eq["player"]["equipped"]
+    assert "铁剑" in eq["player"]["equipped"]
     assert eq["player"]["atk"] == 15   # base 10 + 剑 5
 
 
 def test_buy_insufficient_gold_errors():
     conn = _conn()
     h_register(conn, CFG, "w", "u", "小明", now=0)
-    res = h_buy(conn, CFG, "w", "u", "精铁长剑")  # 价 200,金币 0
+    res = h_buy(conn, CFG, "w", "u", "百炼钢剑")  # 价 125,金币 0
     assert res["ok"] is False
     assert "error" in res
 
@@ -67,18 +67,18 @@ def test_use_potion():
     p.current_hp = 10
     p.inventory.append(InventoryItem(item_id="hp_potion", quantity=1))
     repo.save_player(conn, p)
-    res = h_use(conn, CFG, "w", "u", "治疗药水")
+    res = h_use(conn, CFG, "w", "u", "金疮药")
     assert res["ok"] is True
-    assert res["player"]["hp"] == 60
+    assert res["player"]["hp"] == 40           # 10 + 30
 
 
 def test_shop_lists_items():
     res = h_shop(CFG)
     assert res["ok"] is True
     names = {i["name"] for i in res["items"]}
-    assert "治疗药水" in names
-    pot = next(i for i in res["items"] if i["name"] == "治疗药水")
-    assert pot["price"] == 20
+    assert "金疮药" in names
+    pot = next(i for i in res["items"] if i["name"] == "金疮药")
+    assert pot["price"] == 15
 
 
 def test_ranking_group_scoped_and_sorted():

@@ -18,8 +18,8 @@ def test_list_shop_only_priced_items():
 
 def test_buy_deducts_gold_and_adds_item():
     p = Player(group_id="g", user_id="u", name="勇者", gold=100)
-    buy(p, "hp_potion", CFG)           # price 20
-    assert p.gold == 80
+    buy(p, "hp_potion", CFG)           # price 15
+    assert p.gold == 85
     assert any(i.item_id == "hp_potion" for i in p.inventory)
 
 

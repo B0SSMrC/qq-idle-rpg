@@ -59,6 +59,6 @@ def test_player_view_has_expected_fields():
                 "stamina", "stamina_max", "atk", "def", "power",
                 "gold", "depth", "max_depth", "equipped", "inventory"):
         assert key in p, f"missing field {key}"
-    assert p["stamina_max"] == 50
+    assert p["stamina_max"] == 100
     assert p["equipped"] == []
     assert p["inventory"] == []

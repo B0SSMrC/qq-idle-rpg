@@ -27,7 +27,7 @@ def test_end_to_end_register_status_explore():
     assert st["player"]["name"] == "冒烟侠"
 
     shop = server.rpg_shop()
-    assert shop["ok"] is True and any(i["name"] == "治疗药水" for i in shop["items"])
+    assert shop["ok"] is True and any(i["name"] == "金疮药" for i in shop["items"])
 
 
 def test_error_surfaces_as_ok_false():

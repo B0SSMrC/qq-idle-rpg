@@ -37,14 +37,21 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
 
 
 def render_status(player: Player, cfg: GameConfig) -> str:
-    return "\n".join([
+    lines = [
         f"🛡️ {player.name}  Lv.{player.level}  (本群)",
         f"经验 {player.exp}",
         f"❤️ HP {player.current_hp}/{hp_max(player, cfg)}   ⚡ 体力 {player.stamina}/{cfg.balance.stamina_max}",
         f"⚔️ 攻击 {attack(player, cfg)}   🛡️ 防御 {defense(player, cfg)}   💪 战力 {power(player, cfg)}",
         f"💰 金币 {player.gold}   🏆 最深 第{player.max_depth}层",
         "🎒 装备:" + ("、".join(_item_name(cfg, i.item_id) for i in player.inventory if i.equipped) or "无"),
-    ])
+    ]
+    if player.buffs:
+        lines.append("✨ Buff:")
+        for b in player.buffs:
+            icon = "⚔️攻击" if b.type == "atk" else "🛡️防御"
+            lines.append(f"  {icon}+{b.amount}  (剩余{b.steps_left}步)")
+    return "\n".join(lines)
+    return "\n".join(lines)
 
 
 def render_ranking(players, cfg: GameConfig, key: str = "level") -> str:

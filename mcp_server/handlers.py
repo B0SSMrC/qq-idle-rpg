@@ -62,6 +62,10 @@ def player_view(player: Player, cfg: GameConfig) -> dict:
             }
             for i in player.inventory
         ],
+        "buffs": [
+            {"type": b.type, "amount": b.amount, "steps_left": b.steps_left}
+            for b in player.buffs
+        ],
     }
 
 

@@ -12,7 +12,7 @@ def test_find_by_id():
 
 
 def test_find_by_chinese_name():
-    assert find_item_id(CFG, "治疗药水") == "hp_potion"
+    assert find_item_id(CFG, "金疮药") == "hp_potion"
 
 
 def test_find_unknown_raises():
