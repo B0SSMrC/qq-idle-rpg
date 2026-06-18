@@ -37,9 +37,11 @@ def test_register_duplicate_name_returns_error():
 def test_status_settles_stamina_by_real_time():
     conn = _conn()
     h_register(conn, CFG, "w", "u", "小明", now=0)
-    res = h_status(conn, CFG, "w", "u", now=60 * 60)  # 60 分钟 → +12 体力
+    b = CFG.balance
+    expect = min(b.stamina_max, (60 // b.stamina_regen_minutes) * b.stamina_regen_amount)
+    res = h_status(conn, CFG, "w", "u", now=60 * 60)
     assert res["ok"] is True
-    assert res["player"]["stamina"] == 12
+    assert res["player"]["stamina"] == expect
 
 
 def test_status_missing_character_returns_error():

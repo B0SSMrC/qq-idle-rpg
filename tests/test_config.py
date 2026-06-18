@@ -50,6 +50,13 @@ def test_validate_rejects_nonpositive_cost_per_step():
         validate_config(cfg)
 
 
+def test_validate_rejects_nonpositive_regen_amount():
+    cfg = load_config(DATA_DIR)
+    cfg.balance.stamina_regen_amount = 0
+    with pytest.raises(ConfigError, match="regen_amount"):
+        validate_config(cfg)
+
+
 def test_validate_rejects_zero_regen_minutes():
     cfg = load_config(DATA_DIR)
     cfg.balance.stamina_regen_minutes = 0

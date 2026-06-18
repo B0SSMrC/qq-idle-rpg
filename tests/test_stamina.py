@@ -44,3 +44,18 @@ def test_remainder_not_lost_across_calls():
     # 第二次:再过 3 分钟(累计余 2+3=5)→ 再回 1
     settle_stamina(p, now=1000 + 10 * 60, regen_minutes=REGEN_MIN, max_stamina=MAX)
     assert p.stamina == 2
+
+
+def test_regen_amount_multiplies():
+    # regen_minutes=1, regen_amount=10 → 每分钟回 10 点
+    p = _player(0, 1000)
+    settle_stamina(p, now=1000 + 3 * 60, regen_minutes=1,
+                   max_stamina=100, regen_amount=10)
+    assert p.stamina == 30          # 3 分钟 × 10
+
+
+def test_regen_amount_respects_cap():
+    p = _player(0, 1000)
+    settle_stamina(p, now=1000 + 10 * 60, regen_minutes=1,
+                   max_stamina=50, regen_amount=10)
+    assert p.stamina == 50          # 100 应被封顶到 50

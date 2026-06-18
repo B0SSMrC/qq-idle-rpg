@@ -1,5 +1,6 @@
 stamina:
-  regen_minutes: 5      # 每 5 分钟回 1 点
+  regen_minutes: 1      # 每 1 分钟结算一次
+  regen_amount: 10      # 每次回 10 点 → 即 1 分钟回 10 点
   max: 50
   cost_per_step: 5      # 满体力可走 10 步
 leveling:

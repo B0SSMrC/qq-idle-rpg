@@ -35,7 +35,8 @@ def register(conn: sqlite3.Connection, cfg: GameConfig,
 def status(conn: sqlite3.Connection, cfg: GameConfig,
            group_id: str, user_id: str, now: int) -> Player:
     p = _require(conn, cfg, group_id, user_id)
-    settle_stamina(p, now, cfg.balance.stamina_regen_minutes, cfg.balance.stamina_max)
+    settle_stamina(p, now, cfg.balance.stamina_regen_minutes, cfg.balance.stamina_max,
+                   cfg.balance.stamina_regen_amount)
     p.last_active_at = now
     repo.save_player(conn, p)
     return p
