@@ -74,24 +74,35 @@ def load_config(data_dir: Path) -> GameConfig:
 
 
 def validate_config(cfg: GameConfig) -> None:
+    # 数值旋钮:正值校验(否则会导致除零或探索死循环)
+    b = cfg.balance
+    if b.stamina_regen_minutes <= 0 or b.stamina_cost_per_step <= 0:
+        raise ConfigError("stamina 的 regen_minutes / cost_per_step 必须为正")
     # 物品槽位合法
     for it in cfg.items.values():
         if it.slot not in VALID_SLOTS:
             raise ConfigError(f"物品 {it.id} 槽位非法: {it.slot}")
-    # 怪物掉落引用的物品必须存在
+    # 至少要有一个怪物(否则 combat 事件无怪可抽)
+    if not cfg.monsters:
+        raise ConfigError("至少需要一个怪物")
+    # 怪物字段校验
     for m in cfg.monsters.values():
         if m.depth_min > m.depth_max:
             raise ConfigError(f"怪物 {m.id} 层数范围非法")
+        if m.gold_min > m.gold_max:
+            raise ConfigError(f"怪物 {m.id} 金币范围非法")
         for d in m.drops:
             if d.item not in cfg.items:
                 raise ConfigError(f"怪物 {m.id} 掉落引用了不存在的物品: {d.item}")
             if not (0.0 <= d.chance <= 1.0):
                 raise ConfigError(f"怪物 {m.id} 掉落概率非法: {d.chance}")
-    # 事件类型与权重
+    # 事件类型、权重、宝箱金币范围
     for e in cfg.events:
         if e.type not in VALID_EVENT_TYPES:
             raise ConfigError(f"事件 {e.id} 类型非法: {e.type}")
         if e.weight <= 0:
             raise ConfigError(f"事件 {e.id} 的 weight 必须为正")
+        if e.type == "treasure" and e.reward_gold and e.reward_gold[0] > e.reward_gold[1]:
+            raise ConfigError(f"事件 {e.id} reward_gold 范围非法")
     if not any(e.type == "combat" for e in cfg.events):
         raise ConfigError("至少需要一个 combat 事件")
