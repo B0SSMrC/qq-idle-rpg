@@ -91,3 +91,27 @@ def test_ranking_group_scoped_and_sorted():
     assert res["ok"] is True
     assert [r["name"] for r in res["ranking"]] == ["B", "C", "A"]
     assert res["ranking"][0]["rank"] == 1
+
+
+def test_explore_zero_stamina_returns_empty_with_note():
+    conn = _conn()
+    h_register(conn, CFG, "w", "u", "小明", now=0)
+    res = h_explore(conn, CFG, "w", "u", now=0, rng=random.Random(1))  # 0 体力
+    assert res["ok"] is True
+    assert res["result"]["steps"] == []
+    assert "note" in res["result"]
+
+
+def test_ranking_empty_world_ok():
+    conn = _conn()
+    res = h_ranking(conn, CFG, "empty_world", key="level", limit=10)
+    assert res["ok"] is True
+    assert res["ranking"] == []
+
+
+def test_equip_unknown_item_errors():
+    conn = _conn()
+    h_register(conn, CFG, "w", "u", "小明", now=0)
+    res = h_equip(conn, CFG, "w", "u", "屠龙刀")
+    assert res["ok"] is False
+    assert "error" in res

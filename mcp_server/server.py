@@ -25,6 +25,8 @@ _cfg = load_config(_BASE / "data")
 _db_path = os.environ.get("GAME_RPG_DB", str(_BASE / "rpg.db"))
 _conn = get_conn(_db_path)
 init_db(_conn)
+# 所有 DB 访问(含只读的 rpg_status/rpg_inventory/rpg_ranking)都必须持此锁:写入用
+# "先删后插"跨多条语句、非原子;读取不持锁可能读到写到一半的背包。勿把读操作改成无锁。
 _lock = threading.Lock()
 
 
@@ -62,7 +64,7 @@ def rpg_inventory(world_id: str, player_id: str) -> dict:
 
 @mcp.tool()
 def rpg_explore(world_id: str, player_id: str) -> dict:
-    """消耗全部体力进行一次挂机探索,返回逐步冒险结果(战斗/宝箱/陷阱/叙事)与结算后的角色状态。体力不足或未注册会返回错误。"""
+    """消耗全部体力进行一次挂机探索,返回逐步冒险结果(战斗/宝箱/陷阱/叙事)与结算后的角色状态。未注册返回错误;体力不足时 ok 仍为 true 但 steps 为空且 result.note 说明原因。"""
     with _lock:
         return handlers.h_explore(_conn, _cfg, world_id, player_id, _now(), random.Random())
 
