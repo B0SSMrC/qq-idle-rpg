@@ -71,6 +71,11 @@ async def _reply(bot: Bot, event: Event, text: str):
     return await bot.send(event, text)
 
 
+async def _reply_to(bot: Bot, event: Event, name: str, text: str):
+    """给回复加上角色名前缀，群聊里一眼看出在回复谁。"""
+    return await bot.send(event, f"「{name}」\n{text}")
+
+
 async def _guard(bot: Bot, event: Event, coro):
     """统一守卫:GameError → 友好提示;其它异常 → 记日志 + 通用提示,绝不外泄堆栈。"""
     try:
@@ -100,7 +105,7 @@ async def handle_register(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.register(state.conn(), state.CFG, gid, uid, name, state.now())
-            await _reply(bot, event, f"✅ 角色「{p.name}」已创建!发「探索」开始冒险吧~")
+            await _reply_to(bot, event, p.name, "✅ 角色已创建!发「探索」开始冒险吧~")
 
     await _guard(bot, event, _do())
 
@@ -122,7 +127,7 @@ async def handle_explore(bot: Bot, event: Event):
                 state.conn(), state.CFG, gid, uid, state.now(), random.Random()
             )
             p = repo.get_player(state.conn(), gid, uid)
-            await _reply(bot, event, render_explore(p, res, state.CFG))
+            await _reply_to(bot, event, p.name, render_explore(p, res, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -141,7 +146,7 @@ async def handle_status(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.status(state.conn(), state.CFG, gid, uid, state.now())
-            await _reply(bot, event, render_status(p, state.CFG))
+            await _reply_to(bot, event, p.name, render_status(p, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -163,7 +168,7 @@ async def handle_inventory(bot: Bot, event: Event):
             if p is None:
                 await _reply(bot, event, "你还没有角色,先发「注册 角色名」吧~")
                 return
-            await _reply(bot, event, render_inventory(p, state.CFG))
+            await _reply_to(bot, event, p.name, render_inventory(p, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -186,7 +191,7 @@ async def handle_equip(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.do_equip(state.conn(), state.CFG, gid, uid, item_query)
-            await _reply(bot, event, render_status(p, state.CFG))
+            await _reply_to(bot, event, p.name, render_status(p, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -209,7 +214,7 @@ async def handle_unequip(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.do_unequip(state.conn(), state.CFG, gid, uid, item_query)
-            await _reply(bot, event, render_status(p, state.CFG))
+            await _reply_to(bot, event, p.name, render_status(p, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -232,7 +237,7 @@ async def handle_use(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.do_use(state.conn(), state.CFG, gid, uid, item_query)
-            await _reply(bot, event, render_status(p, state.CFG))
+            await _reply_to(bot, event, p.name, render_status(p, state.CFG))
 
     await _guard(bot, event, _do())
 
@@ -267,8 +272,8 @@ async def handle_buy(bot: Bot, event: Event):
     async def _do():
         async with state.player_lock(gid, uid):
             p = services.do_buy(state.conn(), state.CFG, gid, uid, item_query)
-            await _reply(
-                bot, event,
+            await _reply_to(
+                bot, event, p.name,
                 f"✅ 购买成功!当前金币:{p.gold}\n" + render_inventory(p, state.CFG),
             )
 
