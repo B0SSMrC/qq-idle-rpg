@@ -11,8 +11,10 @@ venv/
 .env.*
 !.env.example
 
-# SQLite 存档
+# SQLite 存档(含 WAL 模式生成的边车文件)
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # IDE
