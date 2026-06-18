@@ -1,0 +1,20 @@
+[project]
+name = "qq-idle-rpg"
+version = "0.1.0"
+description = "QQ 文字挂机探索 RPG 机器人"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["game_core*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
