@@ -41,7 +41,6 @@ def status(conn: sqlite3.Connection, cfg: GameConfig,
     return p
 
 
-import random as _random
 from game_core.config import find_item_id
 from game_core.exploration import explore as _explore
 from game_core import loot as _loot, shop as _shop, ranking as _ranking

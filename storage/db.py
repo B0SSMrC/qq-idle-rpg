@@ -34,9 +34,12 @@ CREATE INDEX IF NOT EXISTS idx_players_group ON players(group_id);
 
 
 def get_conn(path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(path)
+    # check_same_thread=False:允许连接在事件循环线程之外使用,避免将来新增同步处理器时
+    # 触发 sqlite 的线程检查报错(写操作仍由 bot/state.py 的按玩家锁串行化)。
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")  # 改善读写并发(:memory: 下自动为 no-op)
     return conn
 
 
