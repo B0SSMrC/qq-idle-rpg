@@ -6,6 +6,8 @@ from game_core import stats, stamina as stamina_mod, combat, progression, loot
 
 def _pick_event(cfg: GameConfig, depth: int, rng: random.Random):
     pool = [e for e in cfg.events if e.depth_min <= depth <= e.depth_max]
+    if not pool:                      # 该层无适配事件时回退到全部事件,避免探索中途崩溃
+        pool = cfg.events
     weights = [e.weight for e in pool]
     return rng.choices(pool, weights=weights, k=1)[0]
 

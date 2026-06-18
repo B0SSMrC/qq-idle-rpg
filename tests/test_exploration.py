@@ -75,3 +75,16 @@ def test_result_totals_are_consistent():
     assert res.total_exp == sum(s.exp for s in res.steps)
     assert res.total_gold == sum(s.gold for s in res.steps)
     assert res.hp_max == hp_max(p, CFG)
+
+
+def test_explore_does_not_crash_when_no_event_matches_depth():
+    # 把所有事件限制在 1-2 层,再到第 99 层探索:depth 过滤后事件池为空,
+    # 应回退到全部事件而非抛 IndexError。
+    import copy
+    cfg = copy.deepcopy(CFG)
+    for e in cfg.events:
+        e.depth_max = 2
+    p = _player(stamina=10)
+    p.current_depth = 99
+    res = explore(p, cfg, now=p.stamina_at, rng=random.Random(1))
+    assert len(res.steps) >= 1          # 没有崩溃,正常产出步骤
