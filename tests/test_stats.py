@@ -1,6 +1,7 @@
 from pathlib import Path
 from game_core.config import load_config
 from game_core.models import Player, InventoryItem
+from game_core.models import Buff
 from game_core.stats import hp_max, attack, defense, power
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -42,3 +43,22 @@ def test_power_formula():
     p = _player(level=1)
     # power = atk*2 + def*2 + hp_max*0.5 = 10*2 + 5*2 + 100*0.5 = 80
     assert power(p, CFG) == 80
+
+
+def test_attack_includes_atk_buff():
+    p = _player(level=1)
+    p.buffs.append(Buff(type="atk", amount=10, steps_left=3))
+    assert attack(p, CFG) == 10 + 10  # base + buff
+
+
+def test_defense_includes_def_buff():
+    p = _player(level=1)
+    p.buffs.append(Buff(type="def", amount=5, steps_left=2))
+    assert defense(p, CFG) == 5 + 5  # base + buff
+
+
+def test_buffs_no_effect_on_wrong_type():
+    p = _player(level=1)
+    p.buffs.append(Buff(type="def", amount=10, steps_left=1))
+    # def buff should NOT affect attack
+    assert attack(p, CFG) == 10

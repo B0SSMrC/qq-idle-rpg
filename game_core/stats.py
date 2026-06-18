@@ -19,14 +19,16 @@ def attack(player: Player, cfg: GameConfig) -> int:
     b = cfg.balance
     base = b.base_atk + b.stats_atk * (player.level - 1)
     bonus = sum(d.atk for d in _equipped_defs(player, cfg))
-    return base + bonus
+    buff_bonus = sum(buf.amount for buf in player.buffs if buf.type == "atk")
+    return base + bonus + buff_bonus
 
 
 def defense(player: Player, cfg: GameConfig) -> int:
     b = cfg.balance
     base = b.base_def + b.stats_def * (player.level - 1)
     bonus = sum(d.defense for d in _equipped_defs(player, cfg))
-    return base + bonus
+    buff_bonus = sum(buf.amount for buf in player.buffs if buf.type == "def")
+    return base + bonus + buff_bonus
 
 
 def power(player: Player, cfg: GameConfig) -> int:
