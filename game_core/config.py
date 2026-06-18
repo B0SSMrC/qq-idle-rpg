@@ -67,6 +67,9 @@ def load_config(data_dir: Path) -> GameConfig:
             atk=it.get("atk", 0), defense=it.get("def", 0),
             hp=it.get("hp", 0), heal=it.get("heal", 0),
             rarity=it.get("rarity", "common"), price=it.get("price"),
+            buff_type=it.get("buff_type", ""),
+            buff_value=it.get("buff_value", 0),
+            buff_steps=it.get("buff_steps", 0),
         )
 
     cfg = GameConfig(balance=balance, monsters=monsters, events=events, items=items)

@@ -48,6 +48,17 @@ class ItemDef:
     heal: int = 0
     rarity: str = "common"
     price: int | None = None        # 有 price 即可在商店出售
+    buff_type: str = ""             # "" | "atk" | "def" | "stamina"
+    buff_value: int = 0             # atk/def 加成值或 stamina 回复量
+    buff_steps: int = 0             # 持续步数（0 = 即时效果如 heal/stamina）
+
+
+@dataclass
+class Buff:
+    """临时增益：探索中按步数衰减，探索结束清除。"""
+    type: str          # "atk" | "def"
+    amount: int        # 加成数值
+    steps_left: int    # 剩余步数
 
 
 @dataclass
@@ -100,6 +111,7 @@ class Player:
     created_at: int = 0
     last_active_at: int = 0
     inventory: list[InventoryItem] = field(default_factory=list)
+    buffs: list[Buff] = field(default_factory=list)
     id: int | None = None           # DB 主键,持久化后才有
 
 
