@@ -39,3 +39,54 @@ def status(conn: sqlite3.Connection, cfg: GameConfig,
     p.last_active_at = now
     repo.save_player(conn, p)
     return p
+
+
+import random as _random
+from game_core.config import find_item_id
+from game_core.exploration import explore as _explore
+from game_core import loot as _loot, shop as _shop, ranking as _ranking
+from game_core.models import ExploreResult, ItemDef
+
+
+def do_explore(conn, cfg, group_id, user_id, now, rng) -> ExploreResult:
+    p = _require(conn, cfg, group_id, user_id)
+    res = _explore(p, cfg, now, rng)
+    repo.save_player(conn, p)
+    return res
+
+
+def do_equip(conn, cfg, group_id, user_id, item_query) -> Player:
+    p = _require(conn, cfg, group_id, user_id)
+    _loot.equip(p, find_item_id(cfg, item_query), cfg)
+    repo.save_player(conn, p)
+    return p
+
+
+def do_unequip(conn, cfg, group_id, user_id, item_query) -> Player:
+    p = _require(conn, cfg, group_id, user_id)
+    _loot.unequip(p, find_item_id(cfg, item_query), cfg)
+    repo.save_player(conn, p)
+    return p
+
+
+def do_use(conn, cfg, group_id, user_id, item_query) -> Player:
+    p = _require(conn, cfg, group_id, user_id)
+    _loot.use_item(p, find_item_id(cfg, item_query), cfg)
+    repo.save_player(conn, p)
+    return p
+
+
+def do_buy(conn, cfg, group_id, user_id, item_query) -> Player:
+    p = _require(conn, cfg, group_id, user_id)
+    _shop.buy(p, find_item_id(cfg, item_query), cfg)
+    repo.save_player(conn, p)
+    return p
+
+
+def shop_list(cfg) -> list[ItemDef]:
+    return _shop.list_shop(cfg)
+
+
+def get_ranking(conn, cfg, group_id, key="level", limit=10) -> list[Player]:
+    players = repo.list_group_players(conn, group_id)
+    return _ranking.rank_players(players, key=key, limit=limit)
