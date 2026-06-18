@@ -1,6 +1,6 @@
 from __future__ import annotations
 import random
-from game_core.models import Player, MonsterDef, GameConfig, InventoryItem
+from game_core.models import Player, MonsterDef, GameConfig, InventoryItem, Buff
 from game_core.errors import ItemNotFound, InvalidSlot
 from game_core.stats import hp_max
 
@@ -58,6 +58,21 @@ def use_item(player: Player, item_id: str, cfg: GameConfig) -> None:
         raise ItemNotFound(f"背包里没有 {item.name}")
     if item.heal > 0:
         player.current_hp = min(hp_max(player, cfg), player.current_hp + item.heal)
+
+    # 体力回复
+    if item.buff_type == "stamina":
+        player.stamina = min(cfg.balance.stamina_max,
+                             player.stamina + item.buff_value)
+
+    # atk/def Buff（同类型覆盖）
+    if item.buff_type in ("atk", "def"):
+        player.buffs = [b for b in player.buffs if b.type != item.buff_type]
+        player.buffs.append(Buff(
+            type=item.buff_type,
+            amount=item.buff_value,
+            steps_left=item.buff_steps,
+        ))
+
     inv.quantity -= 1
     if inv.quantity <= 0:
         player.inventory.remove(inv)

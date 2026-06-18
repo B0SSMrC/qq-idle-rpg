@@ -2,7 +2,7 @@ import random
 import pytest
 from pathlib import Path
 from game_core.config import load_config
-from game_core.models import Player, InventoryItem, MonsterDef, DropDef
+from game_core.models import Player, InventoryItem, MonsterDef, DropDef, Buff
 from game_core.loot import roll_drops, add_item, equip, unequip, use_item
 from game_core.stats import hp_max
 from game_core.errors import ItemNotFound, InvalidSlot
@@ -82,3 +82,41 @@ def test_use_caps_at_hp_max():
     add_item(p, "hp_potion")
     use_item(p, "hp_potion", CFG)
     assert p.current_hp == hp_max(p, CFG)
+
+
+def test_use_atk_buff_potion_adds_buff():
+    p = _player()
+    add_item(p, "atk_potion_minor")
+    use_item(p, "atk_potion_minor", CFG)
+    assert len(p.buffs) == 1
+    assert p.buffs[0].type == "atk"
+    assert p.buffs[0].amount == 10
+    assert p.buffs[0].steps_left == 4
+    assert len(p.inventory) == 0  # 用完即移出
+
+
+def test_use_def_buff_overwrites_existing():
+    p = _player()
+    p.buffs.append(Buff(type="def", amount=3, steps_left=2))
+    add_item(p, "def_potion_minor")
+    use_item(p, "def_potion_minor", CFG)
+    assert len(p.buffs) == 1
+    assert p.buffs[0].type == "def"
+    assert p.buffs[0].amount == 8       # 新值覆盖旧值
+    assert p.buffs[0].steps_left == 4
+
+
+def test_use_stamina_potion_restores_stamina():
+    p = _player()
+    p.stamina = 10
+    add_item(p, "stamina_potion")
+    use_item(p, "stamina_potion", CFG)
+    assert p.stamina == 60              # 10 + 50
+
+
+def test_use_stamina_potion_caps_at_max():
+    p = _player()
+    p.stamina = 80
+    add_item(p, "stamina_potion")
+    use_item(p, "stamina_potion", CFG)
+    assert p.stamina == 100             # capped
