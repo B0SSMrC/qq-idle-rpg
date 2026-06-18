@@ -2,7 +2,7 @@ from storage.db import get_conn, init_db
 from storage.repository import (
     get_player, create_player, save_player, list_group_players,
 )
-from game_core.models import Player, InventoryItem
+from game_core.models import Player, InventoryItem, Buff
 
 
 def _conn():
@@ -66,3 +66,33 @@ def test_list_group_players_is_group_scoped():
     create_player(conn, _player(group="g2", user="c", name="C"))
     g1 = list_group_players(conn, "g1")
     assert {p.name for p in g1} == {"A", "B"}
+
+
+def test_save_and_load_buffs():
+    """Buff 应完整持久化并在读取时恢复。"""
+    conn = _conn()
+    p = _player()
+    p.buffs.append(Buff(type="atk", amount=10, steps_left=3))
+    p.buffs.append(Buff(type="def", amount=5, steps_left=2))
+    saved = create_player(conn, p)
+    loaded = get_player(conn, "g", "u")
+    assert len(loaded.buffs) == 2
+    assert loaded.buffs[0].type == "atk"
+    assert loaded.buffs[0].amount == 10
+    assert loaded.buffs[1].type == "def"
+    assert loaded.buffs[1].steps_left == 2
+
+
+def test_save_overwrites_old_buffs():
+    """保存时应删旧插新，不会残留已移除的 Buff。"""
+    conn = _conn()
+    p = _player()
+    p.buffs.append(Buff(type="atk", amount=10, steps_left=3))
+    p = create_player(conn, p)
+    p.buffs.clear()
+    p.buffs.append(Buff(type="def", amount=8, steps_left=1))
+    save_player(conn, p)
+    loaded = get_player(conn, "g", "u")
+    assert len(loaded.buffs) == 1
+    assert loaded.buffs[0].type == "def"
+    assert loaded.buffs[0].amount == 8

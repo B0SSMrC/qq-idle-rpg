@@ -9,7 +9,7 @@ PLAYER_COLS = [
 ]
 
 
-def _row_to_player(row: sqlite3.Row, inv_rows: list[sqlite3.Row]) -> Player:
+def _row_to_player(conn, row: sqlite3.Row, inv_rows: list[sqlite3.Row]) -> Player:
     p = Player(
         group_id=row["group_id"], user_id=row["user_id"], name=row["name"],
         level=row["level"], exp=row["exp"], gold=row["gold"],
@@ -23,7 +23,25 @@ def _row_to_player(row: sqlite3.Row, inv_rows: list[sqlite3.Row]) -> Player:
                       equipped=bool(r["equipped"]))
         for r in inv_rows
     ]
+    p.buffs = _load_buffs(conn, row["id"])
     return p
+
+
+def _load_buffs(conn: sqlite3.Connection, player_id: int) -> list:
+    from game_core.models import Buff
+    rows = conn.execute(
+        "SELECT * FROM buffs WHERE player_id=?", (player_id,)).fetchall()
+    return [Buff(type=r["type"], amount=r["amount"],
+                 steps_left=r["steps_left"]) for r in rows]
+
+
+def _save_buffs(conn: sqlite3.Connection, player) -> None:
+    conn.execute("DELETE FROM buffs WHERE player_id=?", (player.id,))
+    for b in player.buffs:
+        conn.execute(
+            "INSERT INTO buffs (player_id,type,amount,steps_left) "
+            "VALUES (?,?,?,?)",
+            (player.id, b.type, b.amount, b.steps_left))
 
 
 def _load_inventory(conn: sqlite3.Connection, player_id: int) -> list[sqlite3.Row]:
@@ -37,7 +55,7 @@ def get_player(conn: sqlite3.Connection, group_id: str, user_id: str) -> Player 
         (group_id, user_id)).fetchone()
     if row is None:
         return None
-    return _row_to_player(row, _load_inventory(conn, row["id"]))
+    return _row_to_player(conn, row, _load_inventory(conn, row["id"]))
 
 
 def create_player(conn: sqlite3.Connection, player: Player) -> Player:
@@ -47,6 +65,7 @@ def create_player(conn: sqlite3.Connection, player: Player) -> Player:
         tuple(getattr(player, c) for c in PLAYER_COLS))
     player.id = cur.lastrowid
     _save_inventory(conn, player)
+    _save_buffs(conn, player)
     conn.commit()
     return player
 
@@ -57,6 +76,7 @@ def save_player(conn: sqlite3.Connection, player: Player) -> None:
         f"UPDATE players SET {set_clause} WHERE id=?",
         (*[getattr(player, c) for c in PLAYER_COLS], player.id))
     _save_inventory(conn, player)
+    _save_buffs(conn, player)
     conn.commit()
 
 
@@ -73,4 +93,4 @@ def _save_inventory(conn: sqlite3.Connection, player: Player) -> None:
 def list_group_players(conn: sqlite3.Connection, group_id: str) -> list[Player]:
     rows = conn.execute(
         "SELECT * FROM players WHERE group_id=?", (group_id,)).fetchall()
-    return [_row_to_player(r, _load_inventory(conn, r["id"])) for r in rows]
+    return [_row_to_player(conn, r, _load_inventory(conn, r["id"])) for r in rows]
