@@ -22,12 +22,17 @@ cp .env.example .env
 获取 **AppID**、**Token**（机器人令牌）和 **AppSecret**,填入 `.env`:
 
 ```dotenv
-DRIVER=~fastapi+~httpx
+DRIVER=~fastapi+~httpx+~websockets
 COMMAND_START=["", "/"]
-QQ_BOTS='[{"id": "你的AppID", "token": "你的Token", "secret": "你的AppSecret"}]'
+QQ_IS_SANDBOX=true
+QQ_BOTS='[{"id": "你的AppID", "token": "你的Token", "secret": "你的AppSecret", "intent": {"c2c_group_at_messages": true}}]'
 ```
 
-> `COMMAND_START` 含空字符串,群里 @机器人 发「注册」等裸关键词(无 `/`)才能触发。
+关键点(踩坑必看):
+- **`DRIVER` 三段**:QQ 适配器要 HTTP + WebSocket 客户端。
+- **`QQ_IS_SANDBOX=true`**:沙箱阶段必须开,否则连正式环境、收不到沙箱消息。
+- **`intent.c2c_group_at_messages=true`**:接收「单聊/群」消息的开关,**默认是关的**,不开则机器人收不到任何单聊/群消息。
+- **`COMMAND_START` 含空字符串**:让「注册」等裸关键词(无 `/`)能触发;群/频道仍需 @机器人,单聊直接发。
 
 ### 3. 运行
 
