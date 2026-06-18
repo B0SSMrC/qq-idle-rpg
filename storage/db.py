@@ -30,6 +30,16 @@ CREATE TABLE IF NOT EXISTS inventory (
 
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory(player_id);
 CREATE INDEX IF NOT EXISTS idx_players_group ON players(group_id);
+
+CREATE TABLE IF NOT EXISTS buffs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id   INTEGER NOT NULL REFERENCES players(id),
+    type        TEXT NOT NULL,
+    amount      INTEGER NOT NULL,
+    steps_left  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id);
 """
 
 
@@ -45,4 +55,35 @@ def get_conn(path: str) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    conn.commit()
+    migrate(conn)
+
+
+def migrate(conn: sqlite3.Connection) -> None:
+    """升级旧存档：建 buffs 表 + 迁移旧物品 ID。
+
+    旧 ID 映射（有序，先迁 iron_sword 避免冲突）：
+      iron_sword（精铁长剑）→ fine_steel_sword（百炼钢剑）
+      rusty_sword（生锈的铁剑）→ iron_sword（铁剑）
+    """
+    # 建 buffs 表（IF NOT EXISTS 已覆盖，显式保障）
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS buffs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER NOT NULL REFERENCES players(id),
+            type TEXT NOT NULL,
+            amount INTEGER NOT NULL,
+            steps_left INTEGER NOT NULL
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id)")
+
+    # 迁移旧物品 ID（有序——先迁 iron_sword 以免与新 iron_sword 冲突）
+    conn.execute(
+        "UPDATE inventory SET item_id='fine_steel_sword' "
+        "WHERE item_id='iron_sword'")
+    conn.execute(
+        "UPDATE inventory SET item_id='iron_sword' "
+        "WHERE item_id='rusty_sword'")
     conn.commit()
