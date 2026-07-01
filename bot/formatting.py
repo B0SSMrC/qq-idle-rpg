@@ -1,6 +1,15 @@
 from __future__ import annotations
+import random
 from game_core.models import Player, ExploreResult, GameConfig
 from game_core.stats import hp_max, attack, defense, power
+
+COMBAT_WIN_TEMPLATES = [
+    "第{depth}层 ⚔️ {monster} → {rounds}回合击败  +{exp}exp +{gold}金币{extra}",
+    "第{depth}层 ⚔️ 遭遇{monster}，{rounds}回合后取胜  +{exp}exp +{gold}金币{extra}",
+    "第{depth}层 ⚔️ {monster}拦路，被你用{rounds}回合解决  +{exp}exp +{gold}金币{extra}",
+    "第{depth}层 ⚔️ 与{monster}短兵相接，{rounds}回合胜出  +{exp}exp +{gold}金币{extra}",
+    "第{depth}层 ⚔️ 斩退{monster}，战斗持续{rounds}回合  +{exp}exp +{gold}金币{extra}",
+]
 
 
 def _item_name(cfg: GameConfig, item_id: str) -> str:
@@ -13,7 +22,14 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
     for s in res.steps:
         if s.kind == "combat" and s.won:
             extra = f"  ✨ 掉落【{'、'.join(_item_name(cfg, i) for i in s.items)}】" if s.items else ""
-            lines.append(f"第{s.depth}层 ⚔️ {s.monster} → {s.rounds}回合击败  +{s.exp}exp +{s.gold}金币{extra}")
+            lines.append(random.choice(COMBAT_WIN_TEMPLATES).format(
+                depth=s.depth,
+                monster=s.monster,
+                rounds=s.rounds,
+                exp=s.exp,
+                gold=s.gold,
+                extra=extra,
+            ))
         elif s.kind == "combat" and not s.won:
             lines.append(f"第{s.depth}层 ⚔️ 不敌{s.monster},重伤回城…")
         elif s.kind == "treasure":
@@ -38,7 +54,7 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
 
 def render_status(player: Player, cfg: GameConfig) -> str:
     lines = [
-        f"🛡️ {player.name}  Lv.{player.level}  (本群)",
+        f"🛡️ {player.name}  Lv.{player.level}  (当前世界)",
         f"经验 {player.exp}",
         f"❤️ HP {player.current_hp}/{hp_max(player, cfg)}   ⚡ 体力 {player.stamina}/{cfg.balance.stamina_max}",
         f"⚔️ 攻击 {attack(player, cfg)}   🛡️ 防御 {defense(player, cfg)}   💪 战力 {power(player, cfg)}",
@@ -51,11 +67,10 @@ def render_status(player: Player, cfg: GameConfig) -> str:
             icon = "⚔️攻击" if b.type == "atk" else "🛡️防御"
             lines.append(f"  {icon}+{b.amount}  (剩余{b.steps_left}步)")
     return "\n".join(lines)
-    return "\n".join(lines)
 
 
 def render_ranking(players, cfg: GameConfig, key: str = "level") -> str:
-    title = "🏆 本群等级榜" if key == "level" else "🏆 本群深度榜"
+    title = "🏆 当前世界等级榜" if key == "level" else "🏆 当前世界深度榜"
     lines = [title]
     medals = ["🥇", "🥈", "🥉"]
     for i, p in enumerate(players):
@@ -66,11 +81,65 @@ def render_ranking(players, cfg: GameConfig, key: str = "level") -> str:
     return "\n".join(lines)
 
 
+def _shop_category(it) -> str:
+    if it.slot == "weapon":
+        return "⚔️ 武器"
+    if it.slot == "armor":
+        return "🛡️ 护甲"
+    if it.heal > 0:
+        return "💊 治疗"
+    if it.buff_type in ("atk", "def"):
+        return "✨ 临时增益"
+    if it.buff_type == "stamina":
+        return "⚡ 体力"
+    return "📦 其他"
+
+
+def _shop_stats(it) -> str:
+    parts = []
+    if it.atk:
+        parts.append(f"⚔️{it.atk:+d}")
+    if it.defense:
+        parts.append(f"🛡️{it.defense:+d}")
+    if it.hp:
+        parts.append(f"❤️{it.hp:+d}")
+    if it.heal:
+        parts.append(f"💊回{it.heal}")
+    if it.buff_type == "atk":
+        parts.append(f"✨攻击+{it.buff_value}/{it.buff_steps}步")
+    elif it.buff_type == "def":
+        parts.append(f"✨防御+{it.buff_value}/{it.buff_steps}步")
+    elif it.buff_type == "stamina":
+        parts.append(f"⚡体力+{it.buff_value}")
+    return " ".join(parts)
+
+
 def render_shop(cfg: GameConfig) -> str:
     from game_core.shop import list_shop
-    lines = ["🏪 商店(发「购买 物品名」)"]
+    groups = {
+        "⚔️ 武器": [],
+        "🛡️ 护甲": [],
+        "💊 治疗": [],
+        "✨ 临时增益": [],
+        "⚡ 体力": [],
+        "📦 其他": [],
+    }
     for it in list_shop(cfg):
-        lines.append(f"・{it.name}  {it.price}金币")
+        groups[_shop_category(it)].append(it)
+
+    lines = [
+        "🏪 云游商店",
+        "发「购买 物品名」即可购买",
+    ]
+    for title, items in groups.items():
+        if not items:
+            continue
+        lines.append("──────────────")
+        lines.append(title)
+        for it in items:
+            stats = _shop_stats(it)
+            detail = f"  {stats}" if stats else ""
+            lines.append(f"・{it.name}  💰{it.price}金币{detail}")
     return "\n".join(lines)
 
 

@@ -49,7 +49,7 @@ def test_buy_then_equip():
     eq = h_equip(conn, CFG, "w", "u", "铁剑")
     assert eq["ok"] is True
     assert "铁剑" in eq["player"]["equipped"]
-    assert eq["player"]["atk"] == 15   # base 10 + 剑 5
+    assert eq["player"]["atk"] == 17   # base 12 + 剑 5
 
 
 def test_buy_insufficient_gold_errors():
@@ -69,7 +69,7 @@ def test_use_potion():
     repo.save_player(conn, p)
     res = h_use(conn, CFG, "w", "u", "金疮药")
     assert res["ok"] is True
-    assert res["player"]["hp"] == 40           # 10 + 30
+    assert res["player"]["hp"] == 50           # 10 + 40
 
 
 def test_shop_lists_items():
@@ -78,7 +78,7 @@ def test_shop_lists_items():
     names = {i["name"] for i in res["items"]}
     assert "金疮药" in names
     pot = next(i for i in res["items"] if i["name"] == "金疮药")
-    assert pot["price"] == 15
+    assert pot["price"] == 12
 
 
 def test_ranking_group_scoped_and_sorted():

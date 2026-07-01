@@ -25,5 +25,5 @@ def test_two_players_full_flow_with_persistence():
 
     ranked = get_ranking(conn, CFG, "g", key="level")
     assert len(ranked) == 2
-    assert "本群" in render_ranking(ranked, CFG, key="level")
+    assert "当前世界" in render_ranking(ranked, CFG, key="level")
     assert "小明" in render_status(repo.get_player(conn, "g", "u1"), CFG)

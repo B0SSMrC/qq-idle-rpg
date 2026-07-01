@@ -59,8 +59,17 @@ def test_render_ranking_lists_names_with_rank():
 
 def test_render_shop_lists_priced_items():
     text = render_shop(CFG)
+    assert "云游商店" in text
+    assert "⚔️ 武器" in text
+    assert "🛡️ 护甲" in text
+    assert "💊 治疗" in text
+    assert "✨ 临时增益" in text
+    assert "⚡ 体力" in text
     assert "金疮药" in text
-    assert "15" in text          # 金疮药价格
+    assert "12" in text          # 金疮药价格
+    assert "💊回40" in text
+    assert "回气丹" in text
+    assert "⚡体力+50" in text
 
 
 def test_render_inventory_lists_items_and_equipped():

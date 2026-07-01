@@ -17,8 +17,8 @@ def _player(level=1, exp=0, gold=0, hp=None):
 
 def test_exp_need_curve():
     assert exp_need(1, CFG) == 100                  # base_exp
-    assert exp_need(2, CFG) == round(100 * 1.4)     # 140
-    assert exp_need(3, CFG) == round(100 * 1.4 ** 2)
+    assert exp_need(2, CFG) == round(100 * 1.35)    # 135
+    assert exp_need(3, CFG) == round(100 * 1.35 ** 2)
 
 
 def test_grant_exp_single_level():
@@ -31,8 +31,8 @@ def test_grant_exp_single_level():
 
 def test_grant_exp_multi_level_in_one_call():
     p = _player(level=1, exp=0)
-    # 100 + 140 = 240 足够升到 3 级,剩 0
-    ups = grant_exp(p, 240, CFG)
+    # 100 + 135 = 235 足够升到 3 级,剩 0
+    ups = grant_exp(p, 235, CFG)
     assert ups == 2
     assert p.level == 3
     assert p.exp == 0
@@ -47,7 +47,7 @@ def test_level_up_full_heals():
 def test_apply_defeat_penalty():
     p = _player(level=3, gold=200, hp=1)
     apply_defeat(p, CFG)
-    assert p.gold == 180                # 损失 10%
+    assert p.gold == 190                # 损失 5%
     assert p.current_depth == 1         # 回到第 1 层
     assert p.max_depth == 8             # 历史最深保留
     assert p.current_hp == hp_max(p, CFG)   # 满血回城

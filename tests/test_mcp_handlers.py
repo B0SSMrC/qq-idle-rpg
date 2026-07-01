@@ -20,7 +20,7 @@ def test_register_returns_ok_and_player_view():
     p = res["player"]
     assert p["name"] == "小明"
     assert p["level"] == 1
-    assert p["hp"] == p["hp_max"] == 100
+    assert p["hp"] == p["hp_max"] == CFG.balance.base_hp
     assert p["stamina"] == 0
     assert p["gold"] == 0
     assert p["depth"] == 1
@@ -59,6 +59,6 @@ def test_player_view_has_expected_fields():
                 "stamina", "stamina_max", "atk", "def", "power",
                 "gold", "depth", "max_depth", "equipped", "inventory"):
         assert key in p, f"missing field {key}"
-    assert p["stamina_max"] == 100
+    assert p["stamina_max"] == CFG.balance.stamina_max
     assert p["equipped"] == []
     assert p["inventory"] == []

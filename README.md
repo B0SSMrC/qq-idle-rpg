@@ -1,6 +1,10 @@
 # QQ 挂机探索 RPG 机器人
 
-基于 NoneBot2 + nonebot-adapter-qq 的 QQ 群文字挂机 RPG。
+基于 NoneBot2 的 QQ 群文字挂机 RPG。
+
+支持两种接入方式:
+- QQ 官方机器人: `nonebot-adapter-qq`,适合沙箱/正式合规上线。
+- 普通 QQ 号协议端: `nonebot-adapter-onebot` + OneBot v11,适合自用/内测。
 
 ## 快速开始
 
@@ -10,7 +14,7 @@
 pip install -e ".[dev]"
 ```
 
-### 2. 配置 QQ 机器人凭据
+### 2. 方式 A:配置 QQ 官方机器人凭据
 
 将 `.env.example` 复制为 `.env`,然后填入沙箱机器人信息:
 
@@ -40,7 +44,37 @@ QQ_BOTS='[{"id": "你的AppID", "token": "你的Token", "secret": "你的AppSecr
 python -m bot
 ```
 
-### 4. 在 QQ 沙箱频道/群 中测试
+### 4. 方式 B:普通 QQ 号 / OneBot v11
+
+普通 QQ 号模式不使用 QQ 开放平台凭据。你需要先准备一个 OneBot v11 协议端
+(如 NapCatQQ / Lagrange.OneBot),由协议端登录 QQ 号并连接本项目。
+
+复制 OneBot 配置模板:
+
+```bash
+cp .env.onebot.example .env
+```
+
+启动本项目的 OneBot 入口:
+
+```bash
+python -m bot.__main_onebot__
+```
+
+然后在协议端里配置反向 WebSocket:
+
+```text
+ws://127.0.0.1:8080/onebot/v11/ws
+```
+
+普通 QQ 号模式说明:
+- 群聊里建议 `@机器人 探索`;私聊可直接发 `探索`。
+- 群聊存档范围使用 OneBot 的 `group_id`;私聊使用固定世界 `"private"`。
+- 该方式不是 QQ 开放平台官方机器人路径,适合小范围自用/内测。
+
+详细 NapCat 配置见 `docs/napcat-environment-setup.md`。
+
+### 5. 在 QQ 沙箱频道/群 或 OneBot 群聊中测试
 
 @ 机器人发送以下指令验证各功能:
 
@@ -51,9 +85,9 @@ python -m bot
 | `状态` | 查看角色面板(HP、体力、装备、战力) |
 | `背包` | 查看持有物品 |
 | `商店` | 查看在售物品及价格 |
-| `购买 治疗药水` | 购买物品 |
-| `排行榜` | 本群等级榜 |
-| `排行榜 深度` | 本群最深层榜 |
+| `购买 金疮药` | 购买物品 |
+| `排行榜` | 当前世界等级榜 |
+| `排行榜 深度` | 当前世界最深层榜 |
 | `帮助` | 查看完整指令菜单 |
 
 ## 项目结构
@@ -65,7 +99,8 @@ app/         — 服务层(组合逻辑 + 持久化)
 bot/
   state.py           — 进程级单例(DB连接、配置、异步锁)
   plugins/rpg.py     — NoneBot2 命令处理器
-  __main__.py        — 启动入口
+  __main__.py        — QQ 官方机器人启动入口
+  __main_onebot__.py — 普通 QQ 号 / OneBot v11 启动入口
 data/        — YAML 配置(balance/monsters/events/items)
 ```
 

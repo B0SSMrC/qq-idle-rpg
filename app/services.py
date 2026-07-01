@@ -11,7 +11,7 @@ def _require(conn: sqlite3.Connection, cfg: GameConfig,
              group_id: str, user_id: str) -> Player:
     p = repo.get_player(conn, group_id, user_id)
     if p is None:
-        raise CharacterNotFound("你在本群还没有角色,先发「注册 角色名」吧~")
+        raise CharacterNotFound("你在当前世界还没有角色,先发「注册 角色名」吧~")
     return p
 
 
@@ -21,10 +21,10 @@ def register(conn: sqlite3.Connection, cfg: GameConfig,
     if not name or len(name) > 12:
         raise GameError("角色名需为 1-12 个字符")
     if repo.get_player(conn, group_id, user_id) is not None:
-        raise DuplicateName("你在本群已经有角色啦")
+        raise DuplicateName("你在当前世界已经有角色啦")
     for other in repo.list_group_players(conn, group_id):
         if other.name == name:
-            raise DuplicateName(f"本群已有人叫「{name}」,换一个吧")
+            raise DuplicateName(f"当前世界已有人叫「{name}」,换一个吧")
     # 用 1 级 hp_max 初始化满血
     probe = Player(group_id=group_id, user_id=user_id, name=name)
     start_hp = hp_max(probe, cfg)

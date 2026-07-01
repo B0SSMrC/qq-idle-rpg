@@ -106,3 +106,12 @@ def test_buffs_cleared_on_explore_end():
     res = explore(p, CFG, now=p.stamina_at, rng=random.Random(99))
     # 无论胜负，探索结束后 buffs 应空
     assert len(p.buffs) == 0
+
+
+def test_buffs_preserved_when_no_steps_are_taken():
+    p = _player(stamina=0)
+    p.buffs.append(Buff(type="atk", amount=10, steps_left=4))
+    res = explore(p, CFG, now=p.stamina_at, rng=random.Random(1))
+    assert res.steps == []
+    assert len(p.buffs) == 1
+    assert p.buffs[0].steps_left == 4

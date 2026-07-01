@@ -18,15 +18,15 @@ def test_list_shop_only_priced_items():
 
 def test_buy_deducts_gold_and_adds_item():
     p = Player(group_id="g", user_id="u", name="勇者", gold=100)
-    buy(p, "hp_potion", CFG)           # price 15
-    assert p.gold == 85
+    buy(p, "hp_potion", CFG)           # price 12
+    assert p.gold == 88
     assert any(i.item_id == "hp_potion" for i in p.inventory)
 
 
 def test_buy_insufficient_gold():
     p = Player(group_id="g", user_id="u", name="勇者", gold=10)
     with pytest.raises(NotEnoughGold):
-        buy(p, "hp_potion", CFG)       # 需 20
+        buy(p, "hp_potion", CFG)       # 需 12
     assert p.gold == 10                # 失败不扣钱
 
 

@@ -69,7 +69,7 @@ def test_do_use_potion():
     repo.save_player(conn, p)
     do_use(conn, CFG, "g", "u", "金疮药")
     after = repo.get_player(conn, "g", "u")
-    assert after.current_hp == 40                 # 10 + 30
+    assert after.current_hp == 50                 # 10 + 40
     assert all(i.item_id != "hp_potion" for i in after.inventory)
 
 

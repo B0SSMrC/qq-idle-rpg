@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sqlite3
+import time
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS players (
@@ -40,7 +41,22 @@ CREATE TABLE IF NOT EXISTS buffs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    name        TEXT PRIMARY KEY,
+    applied_at  INTEGER NOT NULL
+);
 """
+
+LEGACY_ITEM_ID_MIGRATION = "2026_06_18_legacy_item_ids"
+
+
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (name,),
+    ).fetchone()
+    return row is not None
 
 
 def get_conn(path: str) -> sqlite3.Connection:
@@ -54,18 +70,63 @@ def get_conn(path: str) -> sqlite3.Connection:
 
 
 def init_db(conn: sqlite3.Connection) -> None:
+    had_players = _table_exists(conn, "players")
+    had_buffs = _table_exists(conn, "buffs")
     conn.executescript(SCHEMA)
     conn.commit()
-    migrate(conn)
+    migrate(conn, legacy_item_migration_needed=had_players and not had_buffs)
 
 
-def migrate(conn: sqlite3.Connection) -> None:
+def _migration_applied(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM schema_migrations WHERE name=?", (name,)
+    ).fetchone()
+    return row is not None
+
+
+def _mark_migration(conn: sqlite3.Connection, name: str) -> None:
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+        (name, int(time.time())),
+    )
+
+
+def _ensure_unique_player_names(conn: sqlite3.Connection) -> None:
+    duplicates = conn.execute(
+        """
+        SELECT group_id, name, COUNT(*) AS count
+        FROM players
+        GROUP BY group_id, name
+        HAVING COUNT(*) > 1
+        """
+    ).fetchall()
+    if duplicates:
+        raise sqlite3.IntegrityError(
+            "cannot create unique player-name index while duplicate names exist"
+        )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_players_group_name_unique "
+        "ON players(group_id, name)"
+    )
+
+
+def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = False) -> None:
     """升级旧存档：建 buffs 表 + 迁移旧物品 ID。
 
     旧 ID 映射（有序，先迁 iron_sword 避免冲突）：
       iron_sword（精铁长剑）→ fine_steel_sword（百炼钢剑）
       rusty_sword（生锈的铁剑）→ iron_sword（铁剑）
+
+    物品 ID 迁移只适用于扩展前旧库。新库里 iron_sword 已经表示“铁剑”，
+    不能在每次启动时重复迁移。
     """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            name TEXT PRIMARY KEY,
+            applied_at INTEGER NOT NULL
+        )
+    """)
+
     # 建 buffs 表（IF NOT EXISTS 已覆盖，显式保障）
     conn.execute("""
         CREATE TABLE IF NOT EXISTS buffs (
@@ -79,11 +140,16 @@ def migrate(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id)")
 
-    # 迁移旧物品 ID（有序——先迁 iron_sword 以免与新 iron_sword 冲突）
-    conn.execute(
-        "UPDATE inventory SET item_id='fine_steel_sword' "
-        "WHERE item_id='iron_sword'")
-    conn.execute(
-        "UPDATE inventory SET item_id='iron_sword' "
-        "WHERE item_id='rusty_sword'")
+    if (legacy_item_migration_needed
+            and not _migration_applied(conn, LEGACY_ITEM_ID_MIGRATION)):
+        # 有序——先迁 iron_sword，以免与新 iron_sword 冲突。
+        conn.execute(
+            "UPDATE inventory SET item_id='fine_steel_sword' "
+            "WHERE item_id='iron_sword'")
+        conn.execute(
+            "UPDATE inventory SET item_id='iron_sword' "
+            "WHERE item_id='rusty_sword'")
+    _mark_migration(conn, LEGACY_ITEM_ID_MIGRATION)
+
+    _ensure_unique_player_names(conn)
     conn.commit()

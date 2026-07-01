@@ -1,4 +1,4 @@
-"""RPG 命令插件 — 兼容 nonebot-adapter-qq 的单聊/群/频道三种消息事件。
+"""RPG 命令插件 — 兼容 QQ 官方适配器与 OneBot v11。
 
 已验证的适配器 API (nonebot-adapter-qq 1.7.1):
   事件类:
@@ -11,21 +11,36 @@
   群   → group_openid
   单聊 → 常量 "c2c"(同一私聊世界,所有私聊玩家同榜)
   频道 → "guild_{guild_id}"(同一频道服务器同榜)
+
+OneBot v11:
+  群聊 → group_id
+  私聊 → 常量 "private"
 """
 from __future__ import annotations
 
 import random
 
 import nonebot
-from nonebot import on_command
+from nonebot import on_command, on_message
 from nonebot.rule import to_me
 from nonebot.adapters import Bot, Event
 
-from nonebot.adapters.qq import (
-    GroupAtMessageCreateEvent,
-    C2CMessageCreateEvent,
-    AtMessageCreateEvent,
-)
+try:
+    from nonebot.adapters.qq import (
+        GroupAtMessageCreateEvent,
+        C2CMessageCreateEvent,
+        AtMessageCreateEvent,
+    )
+except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
+    GroupAtMessageCreateEvent = C2CMessageCreateEvent = AtMessageCreateEvent = None
+
+try:
+    from nonebot.adapters.onebot.v11 import (
+        GroupMessageEvent as OneBotGroupMessageEvent,
+        PrivateMessageEvent as OneBotPrivateMessageEvent,
+    )
+except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
+    OneBotGroupMessageEvent = OneBotPrivateMessageEvent = None
 
 import bot.state as state
 from app import services
@@ -50,12 +65,16 @@ logger = nonebot.log.logger
 def _scope(event: Event) -> tuple[str, str]:
     """返回 (group_id, user_id):group_id 是排行榜/世界范围,因事件类型而异。"""
     uid = event.get_user_id()
-    if isinstance(event, GroupAtMessageCreateEvent):
+    if GroupAtMessageCreateEvent and isinstance(event, GroupAtMessageCreateEvent):
         return event.group_openid, uid
-    if isinstance(event, AtMessageCreateEvent):
+    if AtMessageCreateEvent and isinstance(event, AtMessageCreateEvent):
         return f"guild_{event.guild_id}", uid
-    if isinstance(event, C2CMessageCreateEvent):
+    if C2CMessageCreateEvent and isinstance(event, C2CMessageCreateEvent):
         return "c2c", uid
+    if OneBotGroupMessageEvent and isinstance(event, OneBotGroupMessageEvent):
+        return str(event.group_id), str(event.user_id)
+    if OneBotPrivateMessageEvent and isinstance(event, OneBotPrivateMessageEvent):
+        return "private", str(event.user_id)
     return "unknown", uid
 
 
@@ -63,7 +82,10 @@ def _arg(event: Event, *cmd_words: str) -> str:
     """从消息纯文本里剥掉指令词,返回参数部分。"""
     text = event.get_plaintext().strip()
     for w in cmd_words:
-        text = text.removeprefix(w)
+        for prefix in ("", "/"):
+            token = f"{prefix}{w}"
+            if text.startswith(token):
+                return text.removeprefix(token).strip()
     return text.strip()
 
 
@@ -333,3 +355,31 @@ cmd_help = on_command("帮助", aliases={"菜单", "?"}, rule=to_me(), priority=
 @cmd_help.handle()
 async def handle_help(bot: Bot, event: Event):
     await _reply(bot, event, _HELP_TEXT)
+
+
+# ---------------------------------------------------------------------------
+# 未知指令兜底
+# ---------------------------------------------------------------------------
+
+_UNKNOWN_COMMAND_REPLIES = [
+    "没听懂这个指令。发送「帮助」查看可用指令吧~",
+    "这条咒语还没收录进地牢手册里，发「帮助」看看菜单。",
+    "指令好像走岔路了。试试「探索」「状态」「背包」或「帮助」。",
+    "我翻了翻冒险日志，没找到这个指令。发送「帮助」可查看全部玩法。",
+    "这个操作暂时不会做。可以发「帮助」看看我目前会哪些事。",
+    "地牢回声很响，但我没听清指令。试试「帮助」。",
+    "这不像现有指令。常用的是「注册 名字」「探索」「状态」「商店」。",
+    "命令解析失败啦。发送「帮助」让我把指令菜单列给你。",
+    "这个关键词还没开放。想冒险可以发「探索」，想看菜单发「帮助」。",
+    "我现在只认固定游戏指令。发「帮助」即可查看完整列表。",
+]
+
+cmd_unknown = on_message(rule=to_me(), priority=99, block=True)
+
+
+@cmd_unknown.handle()
+async def handle_unknown(bot: Bot, event: Event):
+    text = event.get_plaintext().strip()
+    if not text:
+        return
+    await _reply(bot, event, random.choice(_UNKNOWN_COMMAND_REPLIES))

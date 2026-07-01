@@ -18,14 +18,14 @@
   atk: 14
   def: 2
   rarity: rare
-  price: 300
+  price: 270
 - id: dark_abyss_sword
   name: 玄冥重剑
   slot: weapon
   atk: 23
   def: 3
   rarity: epic
-  price: 750
+  price: 680
 - id: dragon_slayer_sword
   name: 斩龙剑
   slot: weapon
@@ -51,13 +51,13 @@
   slot: weapon
   atk: 20
   rarity: rare
-  price: 300
+  price: 270
 - id: long_haft_blade
   name: 陌刀
   slot: weapon
   atk: 32
   rarity: epic
-  price: 750
+  price: 680
 - id: green_dragon_blade
   name: 青龙偃月
   slot: weapon
@@ -85,14 +85,14 @@
   atk: 11
   hp: 35
   rarity: rare
-  price: 300
+  price: 270
 - id: serpent_spear
   name: 丈八蛇矛
   slot: weapon
   atk: 18
   hp: 55
   rarity: epic
-  price: 750
+  price: 680
 - id: heaven_piercer_halberd
   name: 方天画戟
   slot: weapon
@@ -121,14 +121,14 @@
   atk: 22
   def: -5
   rarity: rare
-  price: 300
+  price: 270
 - id: soul_chaser_needle
   name: 追魂针
   slot: weapon
   atk: 35
   def: -8
   rarity: epic
-  price: 750
+  price: 680
 - id: storm_of_needles
   name: 暴雨梨花
   slot: weapon
@@ -157,14 +157,14 @@
   def: 5
   hp: 55
   rarity: rare
-  price: 480
+  price: 440
 - id: turtle_shell_armor
   name: 玄龟甲
   slot: armor
   def: 8
   hp: 85
   rarity: epic
-  price: 1200
+  price: 980
 - id: black_tortoise_armor
   name: 玄武灵甲
   slot: armor
@@ -193,14 +193,14 @@
   def: 13
   hp: 28
   rarity: rare
-  price: 480
+  price: 440
 - id: mountain_pattern_armor
   name: 山文甲
   slot: armor
   def: 20
   hp: 45
   rarity: epic
-  price: 1200
+  price: 980
 - id: diamond_body_armor
   name: 金刚不坏铠
   slot: armor
@@ -212,13 +212,13 @@
 - id: hp_potion
   name: 金疮药
   slot: consumable
-  heal: 30
-  price: 15
+  heal: 40
+  price: 12
 - id: greater_hp_potion
   name: 续命丹
   slot: consumable
-  heal: 80
-  price: 40
+  heal: 100
+  price: 35
 - id: supreme_hp_potion
   name: 九转还魂丹
   slot: consumable

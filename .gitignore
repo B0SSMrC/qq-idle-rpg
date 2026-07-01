@@ -10,6 +10,7 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.onebot.example
 
 # SQLite 存档(含 WAL 模式生成的边车文件)
 *.db

@@ -1,18 +1,18 @@
 stamina:
   regen_minutes: 1      # 每 1 分钟结算一次
   regen_amount: 10      # 每次回 10 点 → 即 1 分钟回 10 点
-  max: 100
-  cost_per_step: 5      # 满体力可走 10 步
+  max: 60
+  cost_per_step: 5      # 满体力可走 12 步
 leveling:
   base_exp: 100         # 1→2 级所需经验
-  growth: 1.4
+  growth: 1.35
 stats_per_level:
-  hp: 20
-  atk: 3
+  hp: 24
+  atk: 4
   def: 2
 base_stats:             # 1 级基础属性
-  hp: 100
-  atk: 10
-  def: 5
+  hp: 120
+  atk: 12
+  def: 7
 defeat_penalty:
-  gold_loss_pct: 0.1
+  gold_loss_pct: 0.05

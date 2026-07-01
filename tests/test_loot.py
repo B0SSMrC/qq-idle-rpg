@@ -72,7 +72,7 @@ def test_use_potion_heals_and_consumes():
     p.current_hp = 10
     add_item(p, "hp_potion")
     use_item(p, "hp_potion", CFG)
-    assert p.current_hp == min(hp_max(p, CFG), 10 + 30)
+    assert p.current_hp == min(hp_max(p, CFG), 10 + 40)
     assert all(i.item_id != "hp_potion" for i in p.inventory)   # 用完移除
 
 
@@ -116,7 +116,7 @@ def test_use_stamina_potion_restores_stamina():
 
 def test_use_stamina_potion_caps_at_max():
     p = _player()
-    p.stamina = 80
+    p.stamina = CFG.balance.stamina_max - 10
     add_item(p, "stamina_potion")
     use_item(p, "stamina_potion", CFG)
-    assert p.stamina == 100             # capped
+    assert p.stamina == CFG.balance.stamina_max

@@ -9,6 +9,7 @@ dependencies = [
     "nonebot2[httpx]>=2.3",
     "nonebot2[websockets]>=2.3",
     "nonebot-adapter-qq>=1.5",
+    "nonebot-adapter-onebot>=2.4",
     "mcp[cli]>=1.10",
 ]
 

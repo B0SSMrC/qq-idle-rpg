@@ -9,13 +9,13 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 def test_load_real_config():
     cfg = load_config(DATA_DIR)
     assert isinstance(cfg, GameConfig)
-    assert cfg.balance.stamina_max == 100
+    assert cfg.balance.stamina_max == 60
     assert "slime" in cfg.monsters
     assert cfg.monsters["slime"].depth_min == 1
     assert cfg.monsters["slime"].depth_max == 5
     assert cfg.monsters["slime"].defense == 1     # YAML 的 def 映射到 defense
     assert "hp_potion" in cfg.items
-    assert cfg.items["hp_potion"].heal == 30
+    assert cfg.items["hp_potion"].heal == 40
     assert any(e.type == "combat" for e in cfg.events)
 
 

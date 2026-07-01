@@ -111,7 +111,8 @@ def explore(player: Player, cfg: GameConfig, now: int,
 
         player.max_depth = max(player.max_depth, player.current_depth)
 
-    player.buffs.clear()
+    if steps:
+        player.buffs.clear()
     return ExploreResult(
         steps=steps, total_gold=total_gold, total_exp=total_exp,
         items_gained=items_gained, level_ups=level_ups, defeated=defeated,

@@ -1,26 +1,26 @@
 # combat 事件（怪物池随 depth 切换，权重最大）
 - id: combat
   type: combat
-  weight: 60
+  weight: 52
 
 # 宝箱 — 按深度 3 档
 - id: treasure_shallow
   type: treasure
-  weight: 20
+  weight: 22
   depth_min: 1
   depth_max: 15
   reward_gold: [15, 40]
 
 - id: treasure_mid
   type: treasure
-  weight: 20
+  weight: 22
   depth_min: 16
   depth_max: 35
   reward_gold: [35, 75]
 
 - id: treasure_deep
   type: treasure
-  weight: 20
+  weight: 22
   depth_min: 36
   depth_max: 50
   reward_gold: [70, 150]
@@ -28,21 +28,21 @@
 # 陷阱 — 按深度 3 档
 - id: trap_shallow
   type: trap
-  weight: 12
+  weight: 8
   depth_min: 1
   depth_max: 20
   damage_pct: 0.08
 
 - id: trap_mid
   type: trap
-  weight: 12
+  weight: 8
   depth_min: 21
   depth_max: 35
   damage_pct: 0.12
 
 - id: trap_deep
   type: trap
-  weight: 12
+  weight: 8
   depth_min: 36
   depth_max: 50
   damage_pct: 0.15
@@ -50,7 +50,7 @@
 # flavor — 中式地牢叙事
 - id: flavor
   type: flavor
-  weight: 8
+  weight: 10
   texts:
     - "走廊空荡荡的，只有水滴回声。"
     - "墙上的火把忽明忽暗。"
@@ -60,3 +60,23 @@
     - "磷火在廊道尽头飘荡，映出几道人影。"
     - "一阵阴风从深处涌来，脚下石板簌簌作响。"
     - "拐角处散落着前人的遗物，已腐朽得不成样子。"
+    - "青铜门后的锁链轻轻晃动，像是刚有人经过。"
+    - "地面积水映出你的影子，却比你慢了半拍。"
+    - "壁龛里供着残破木牌，香灰还带着一点温热。"
+    - "远处传来石磨转动的声音，沉闷得像雷。"
+    - "你踩过一片碎瓦，瓦下露出半枚生锈铜钱。"
+    - "空气里有淡淡药味，像是谁刚在此疗伤。"
+    - "头顶落下一撮尘土，上方似乎有东西爬过。"
+    - "墙缝里钻出冷雾，转眼又缩回黑暗深处。"
+    - "一盏残灯无油自燃，照亮墙上一道旧刀痕。"
+    - "石阶旁刻着几行小字，可惜大半已被苔痕吞没。"
+    - "你听见有人在身后轻咳，回头却只有空荡长廊。"
+    - "破旧幡布垂在门梁上，隐约写着镇邪二字。"
+    - "一枚骨骰滚到脚边，点数停在了六。"
+    - "井口深处传来水声，水面却没有半点波纹。"
+    - "壁画上的武者缺了一只眼，另一只眼正对着你。"
+    - "你闻到潮湿木头的气味，像是旧船沉在地下。"
+    - "石柱后有一道浅浅脚印，很快被浮尘盖住。"
+    - "几只空陶罐整齐摆着，罐口都朝向同一个方向。"
+    - "一阵铃声从深处飘来，清脆得有些不合时宜。"
+    - "你在墙角发现一截断香，断口新得不像古物。"
