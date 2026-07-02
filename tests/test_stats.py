@@ -106,9 +106,9 @@ def test_equipment_growth_increases_player_stats_before_affixes():
         InventoryItem(item_id="cloth_armor", equipped=True, enhance_level=5),
     ]
 
-    assert attack(p, CFG) > 12 + CFG.items["iron_sword"].atk
-    assert defense(p, CFG) > 7 + CFG.items["cloth_armor"].defense
-    assert hp_max(p, CFG) > 120 + CFG.items["cloth_armor"].hp
+    assert attack(p, CFG) == 21
+    assert defense(p, CFG) == 10
+    assert hp_max(p, CFG) == 144
 
 
 def test_lifesteal_reads_weapon_affix():

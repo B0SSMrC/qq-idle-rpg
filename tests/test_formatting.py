@@ -125,6 +125,7 @@ def test_render_inventory_lists_items_and_equipped():
     assert "铁剑" in text
     assert "已装备" in text
     assert "金疮药" in text
+    assert "×3" in text
     assert "3" in text           # 数量
 
 

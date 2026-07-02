@@ -308,7 +308,7 @@ def render_inventory(player: Player, cfg: GameConfig) -> str:
         affix_text = f" [{affix}]" if affix else ""
         lines.append(
             f"\u30fb{_item_name(cfg, inv.item_id)}"
-            f"{(' ' + label) if label else ''} x{inv.quantity}{tag}"
+            f"{(' ' + label) if label else ''} ×{inv.quantity}{tag}"
             f"{stats}{affix_text}"
         )
     return "\n".join(lines)
