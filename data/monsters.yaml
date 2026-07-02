@@ -65,8 +65,8 @@
   exp: 165
   gold: [70, 115]
   drops:
-    - { item: cold_iron_sword, chance: 0.02 }
-    - { item: rhino_hide_armor, chance: 0.02 }
+    - { item: cold_iron_sword, chance: 0.030 }
+    - { item: rhino_hide_armor, chance: 0.030 }
 
 - id: corpse_general
   name: 尸将
@@ -77,7 +77,7 @@
   exp: 210
   gold: [90, 140]
   drops:
-    - { item: hook_sickle_spear, chance: 0.02 }
+    - { item: hook_sickle_spear, chance: 0.030 }
     - { item: atk_potion_major, chance: 0.06 }
 
 - id: asura_warrior
@@ -89,7 +89,7 @@
   exp: 250
   gold: [105, 160]
   drops:
-    - { item: bone_penetrating_nail, chance: 0.02 }
+    - { item: bone_penetrating_nail, chance: 0.030 }
     - { item: def_potion_major, chance: 0.05 }
 
 - id: black_dragon
@@ -101,8 +101,8 @@
   exp: 310
   gold: [125, 190]
   drops:
-    - { item: dark_abyss_sword, chance: 0.015 }
-    - { item: mountain_pattern_armor, chance: 0.015 }
+    - { item: dark_abyss_sword, chance: 0.022 }
+    - { item: mountain_pattern_armor, chance: 0.022 }
 
 - id: ancient_demon_king
   name: 上古妖王
@@ -113,8 +113,8 @@
   exp: 390
   gold: [160, 230]
   drops:
-    - { item: long_haft_blade, chance: 0.01 }
-    - { item: serpent_spear, chance: 0.01 }
+    - { item: long_haft_blade, chance: 0.022 }
+    - { item: serpent_spear, chance: 0.022 }
     - { item: supreme_hp_potion, chance: 0.08 }
 
 - id: abyss_knight
@@ -126,8 +126,8 @@
   exp: 480
   gold: [210, 300]
   drops:
-    - { item: moonsteel_sword, chance: 0.025 }
-    - { item: black_iron_plate, chance: 0.020 }
+    - { item: moonsteel_sword, chance: 0.030 }
+    - { item: black_iron_plate, chance: 0.030 }
     - { item: supreme_hp_potion, chance: 0.06 }
 
 - id: crimson_wraith
@@ -139,9 +139,9 @@
   exp: 540
   gold: [230, 330]
   drops:
-    - { item: scarlet_moon_blade, chance: 0.022 }
-    - { item: ghost_lotus_dart, chance: 0.018 }
-    - { item: cloudweave_armor, chance: 0.018 }
+    - { item: scarlet_moon_blade, chance: 0.030 }
+    - { item: ghost_lotus_dart, chance: 0.030 }
+    - { item: cloudweave_armor, chance: 0.030 }
 
 - id: iron_maw_beast
   name: 铁颚兽
@@ -152,8 +152,8 @@
   exp: 620
   gold: [260, 380]
   drops:
-    - { item: silver_dragon_spear, chance: 0.022 }
-    - { item: dragon_scale_plate, chance: 0.016 }
+    - { item: silver_dragon_spear, chance: 0.030 }
+    - { item: dragon_scale_plate, chance: 0.022 }
     - { item: atk_potion_major, chance: 0.05 }
 
 - id: void_sorcerer
@@ -165,9 +165,9 @@
   exp: 720
   gold: [300, 430]
   drops:
-    - { item: starforged_sword, chance: 0.018 }
-    - { item: black_rain_needles, chance: 0.016 }
-    - { item: moonshadow_armor, chance: 0.016 }
+    - { item: starforged_sword, chance: 0.022 }
+    - { item: black_rain_needles, chance: 0.022 }
+    - { item: moonshadow_armor, chance: 0.022 }
 
 - id: grave_colossus
   name: 陵墓巨像
@@ -178,9 +178,9 @@
   exp: 830
   gold: [350, 500]
   drops:
-    - { item: tiger_roar_spear, chance: 0.018 }
-    - { item: thunder_plate, chance: 0.014 }
-    - { item: thunder_soul_sword, chance: 0.012 }
+    - { item: tiger_roar_spear, chance: 0.022 }
+    - { item: thunder_plate, chance: 0.022 }
+    - { item: thunder_soul_sword, chance: 0.022 }
 
 - id: blood_moon_assassin
   name: 血月刺客
@@ -191,9 +191,9 @@
   exp: 960
   gold: [410, 570]
   drops:
-    - { item: cloud_splitter_blade, chance: 0.016 }
-    - { item: soul_lock_nails, chance: 0.014 }
-    - { item: phoenix_feather_armor, chance: 0.012 }
+    - { item: cloud_splitter_blade, chance: 0.022 }
+    - { item: soul_lock_nails, chance: 0.022 }
+    - { item: phoenix_feather_armor, chance: 0.022 }
 
 - id: nether_dragon
   name: 幽冥蛟龙
@@ -204,9 +204,9 @@
   exp: 1120
   gold: [480, 650]
   drops:
-    - { item: meteor_halberd, chance: 0.014 }
-    - { item: thunderclap_blade, chance: 0.012 }
-    - { item: mountain_guard_plate, chance: 0.010 }
+    - { item: meteor_halberd, chance: 0.022 }
+    - { item: thunderclap_blade, chance: 0.022 }
+    - { item: mountain_guard_plate, chance: 0.015 }
 
 - id: demon_general_deep
   name: 镇狱魔将
@@ -217,9 +217,9 @@
   exp: 1300
   gold: [560, 760]
   drops:
-    - { item: sunfire_sword, chance: 0.012 }
-    - { item: sea_quelling_halberd, chance: 0.010 }
-    - { item: star_silk_armor, chance: 0.010 }
+    - { item: sunfire_sword, chance: 0.015 }
+    - { item: sea_quelling_halberd, chance: 0.015 }
+    - { item: star_silk_armor, chance: 0.015 }
 
 - id: abyss_lord
   name: 深渊领主
@@ -230,9 +230,9 @@
   exp: 1600
   gold: [700, 950]
   drops:
-    - { item: dragon_spine_blade, chance: 0.010 }
-    - { item: starfall_needles, chance: 0.008 }
-    - { item: basalt_king_plate, chance: 0.008 }
+    - { item: dragon_spine_blade, chance: 0.015 }
+    - { item: starfall_needles, chance: 0.015 }
+    - { item: basalt_king_plate, chance: 0.010 }
 
 - id: hundred_floor_guardian
   name: 百层镇守
@@ -243,6 +243,6 @@
   exp: 2000
   gold: [900, 1200]
   drops:
-    - { item: void_cleaver_sword, chance: 0.008 }
-    - { item: blood_sea_blade, chance: 0.007 }
-    - { item: mirage_armor, chance: 0.007 }
+    - { item: void_cleaver_sword, chance: 0.010 }
+    - { item: blood_sea_blade, chance: 0.010 }
+    - { item: mirage_armor, chance: 0.010 }
