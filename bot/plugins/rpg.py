@@ -37,6 +37,7 @@ from bot.formatting import (
     render_world_boss_attack,
     render_world_boss_status,
 )
+from bot.reply_templates import UNKNOWN_COMMAND_REPLIES
 from game_core.affixes import format_affix
 from game_core.errors import GameError
 from game_core.void_sacrifice import parse_draw_count
@@ -806,18 +807,7 @@ async def handle_fuzzy(bot: Bot, event: Event):
 # 未知指令兜底
 # ---------------------------------------------------------------------------
 
-_UNKNOWN_COMMAND_REPLIES = [
-    "没听懂这个指令。发送「帮助」查看可用指令吧~",
-    "这条咒语还没收录进地牢手册里，发「帮助」看看菜单。",
-    "指令好像走岔路了。试试「探索」「状态」「背包」或「帮助」。",
-    "我翻了翻冒险日志，没找到这个指令。发送「帮助」可查看全部玩法。",
-    "这个操作暂时不会做。可以发「帮助」看看我目前会哪些事。",
-    "地牢回声很响，但我没听清指令。试试「帮助」。",
-    "这不像现有指令。常用的是「注册 名字」「探索」「状态」「商店」。",
-    "命令解析失败啦。发送「帮助」让我把指令菜单列给你。",
-    "这个关键词还没开放。想冒险可以发「探索」，想看菜单发「帮助」。",
-    "我现在只认固定游戏指令。发「帮助」即可查看完整列表。",
-]
+_UNKNOWN_COMMAND_REPLIES = UNKNOWN_COMMAND_REPLIES
 
 cmd_unknown = on_message(rule=to_me(), priority=99, block=True)
 

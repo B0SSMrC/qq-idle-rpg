@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
-import random
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
 from game_core.affixes import format_affix
@@ -9,14 +8,23 @@ from game_core.void_sacrifice import (
     remaining_divine_pity,
     remaining_mythic_plus_pity,
 )
+from bot.reply_templates import (
+    COMBAT_DEFEAT_TEMPLATES,
+    COMBAT_WIN_TEMPLATES as CENTRAL_COMBAT_WIN_TEMPLATES,
+    EMPTY_INVENTORY_TEMPLATES,
+    EMPTY_SELL_TEMPLATES,
+    EXPLORE_DEFEATED_FOOTERS,
+    LEVEL_UP_TEMPLATES,
+    NO_WORLD_BOSS_TEMPLATES,
+    STAMINA_EMPTY_FOOTERS,
+    TRAP_FALLBACK_TEXTS,
+    TRAP_TEMPLATES,
+    TREASURE_TEMPLATES,
+    VOID_ECHO_TEMPLATES,
+    choose_template,
+)
 
-COMBAT_WIN_TEMPLATES = [
-    "第{depth}层 ⚔️ {monster} → {rounds}回合击败  +{exp}exp +{gold}金币{extra}",
-    "第{depth}层 ⚔️ 遭遇{monster}，{rounds}回合后取胜  +{exp}exp +{gold}金币{extra}",
-    "第{depth}层 ⚔️ {monster}拦路，被你用{rounds}回合解决  +{exp}exp +{gold}金币{extra}",
-    "第{depth}层 ⚔️ 与{monster}短兵相接，{rounds}回合胜出  +{exp}exp +{gold}金币{extra}",
-    "第{depth}层 ⚔️ 斩退{monster}，战斗持续{rounds}回合  +{exp}exp +{gold}金币{extra}",
-]
+COMBAT_WIN_TEMPLATES = CENTRAL_COMBAT_WIN_TEMPLATES
 
 
 def _item_name(cfg: GameConfig, item_id: str) -> str:
@@ -39,8 +47,8 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
     lines = [f"🗡️ 【{player.name}】的下潜 (第{res.depth_before}层 → 第{res.depth_after}层)", ""]
     for s in res.steps:
         if s.kind == "combat" and s.won:
-            extra = f"  ✨ 掉落【{'、'.join(_item_name(cfg, i) for i in s.items)}】" if s.items else ""
-            lines.append(random.choice(COMBAT_WIN_TEMPLATES).format(
+            extra = f"  ✅ 掉落【{'、'.join(_item_name(cfg, i) for i in s.items)}】" if s.items else ""
+            lines.append(choose_template(COMBAT_WIN_TEMPLATES).format(
                 depth=s.depth,
                 monster=s.monster,
                 rounds=s.rounds,
@@ -48,25 +56,43 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
                 gold=s.gold,
                 extra=extra,
             ))
-        elif s.kind == "combat" and not s.won:
-            lines.append(f"第{s.depth}层 ⚔️ 不敌{s.monster},重伤回城…")
-        elif s.kind == "treasure":
-            lines.append(f"第{s.depth}层 📦 发现宝箱  +{s.gold}金币")
-        elif s.kind == "trap":
-            lines.append(f"第{s.depth}层 ⚠️ {s.text or '踩中陷阱'}")
-        else:  # flavor
+            continue
+        if s.kind == "combat" and not s.won:
+            lines.append(choose_template(COMBAT_DEFEAT_TEMPLATES).format(
+                depth=s.depth,
+                monster=s.monster,
+            ))
+            continue
+        if s.kind == "treasure":
+            lines.append(choose_template(TREASURE_TEMPLATES).format(
+                depth=s.depth,
+                gold=s.gold,
+            ))
+            continue
+        if s.kind == "trap":
+            trap_text = s.text or choose_template(TRAP_FALLBACK_TEXTS)
+            lines.append(choose_template(TRAP_TEMPLATES).format(
+                depth=s.depth,
+                text=trap_text,
+            ))
+            continue
+        if s.kind == "flavor":
             lines.append(f"第{s.depth}层 🚶 {s.text}")
+            continue
     lines.append("──────────────")
     got = f"  获得{len(res.items_gained)}件物品" if res.items_gained else ""
     lines.append(f"本次合计:+{res.total_exp}exp  +{res.total_gold}金币{got}")
     lines.append(f"❤️ HP {res.hp_after}/{res.hp_max}   ⚡ 体力 {res.stamina_left}")
     if res.level_ups > 0:
-        lines.append(f"📊 升级 +{res.level_ups}!  当前 Lv.{player.level}")
+        lines.append(choose_template(LEVEL_UP_TEMPLATES).format(
+            level_ups=res.level_ups,
+            level=player.level,
+        ))
     lines.append(f"🏆 最深抵达 第{player.max_depth}层")
     if res.defeated:
-        lines.append("💀 重伤休整,当前层数保留(金币略有损失)")
+        lines.append(choose_template(EXPLORE_DEFEATED_FOOTERS))
     elif res.stamina_left < cfg.balance.stamina_cost_per_step:
-        lines.append("💤 体力耗尽,攒一攒再来下潜~")
+        lines.append(choose_template(STAMINA_EMPTY_FOOTERS))
     return "\n".join(lines)
 
 
@@ -104,7 +130,9 @@ def render_status(player: Player, cfg: GameConfig) -> str:
 def render_sell_result(result: SellResult, gold_after: int) -> str:
     lines = ["💰 一键出售结算"]
     if not result.sold_items:
-        lines.append("没有可出售的未装备武器/防具。")
+        lines.append(choose_template(EMPTY_SELL_TEMPLATES))
+        lines.append(f"当前金币: {gold_after}")
+        return "\n".join(lines)
     else:
         count = sum(item.quantity for item in result.sold_items)
         lines.append(f"售出 {count} 件装备，获得 {result.total_gold} 金币")
@@ -238,7 +266,7 @@ def render_shop(cfg: GameConfig) -> str:
 
 def render_inventory(player: Player, cfg: GameConfig) -> str:
     if not player.inventory:
-        return "🎒 背包空空如也,发「探索」去找点东西吧~"
+        return choose_template(EMPTY_INVENTORY_TEMPLATES)
     lines = ["🎒 背包"]
     for it in player.inventory:
         tag = "(已装备)" if it.equipped else ""
@@ -255,7 +283,7 @@ def _boss_value(boss, key: str):
 def render_world_boss_status(result, cfg: GameConfig) -> str:
     boss = result.boss
     if boss is None:
-        return "🌑 当前没有世界Boss。"
+        return choose_template(NO_WORLD_BOSS_TEMPLATES)
 
     hp_current = _boss_value(boss, "hp_current")
     hp_max_value = max(1, _boss_value(boss, "hp_max"))
