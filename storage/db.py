@@ -97,6 +97,16 @@ CREATE TABLE IF NOT EXISTS world_boss_rewards (
     claimed_at      INTEGER NOT NULL,
     PRIMARY KEY (boss_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS void_sacrifice_pity (
+    group_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    total_draws INTEGER NOT NULL DEFAULT 0,
+    draws_since_mythic_plus INTEGER NOT NULL DEFAULT 0,
+    draws_since_divine INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (group_id, user_id)
+);
 """
 
 LEGACY_ITEM_ID_MIGRATION = "2026_06_18_legacy_item_ids"
