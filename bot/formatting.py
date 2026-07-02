@@ -3,6 +3,10 @@ import random
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
 from game_core.affixes import format_affix
+from game_core.void_sacrifice import (
+    remaining_divine_pity,
+    remaining_mythic_plus_pity,
+)
 
 COMBAT_WIN_TEMPLATES = [
     "第{depth}层 ⚔️ {monster} → {rounds}回合击败  +{exp}exp +{gold}金币{extra}",
@@ -92,6 +96,39 @@ def render_sell_result(result: SellResult, gold_after: int) -> str:
                 f"{item.unit_price}/件 = {item.total_price}"
             )
     lines.append(f"当前金币: {gold_after}")
+    return "\n".join(lines)
+
+
+def render_void_sacrifice(result, cfg: GameConfig) -> str:
+    lines = [
+        f"🌌 虚空献祭 ×{result.draw_count}",
+        f"消耗金币:{result.cost}",
+        "",
+    ]
+    for index, draw in enumerate(result.draws, start=1):
+        if draw.item_id:
+            item_name = _item_name(cfg, draw.item_id)
+            affix = ""
+            for inv in reversed(result.player.inventory):
+                if inv.item_id == draw.item_id:
+                    affix = format_affix(inv.affix)
+                    break
+            affix_text = f"[{affix}]" if affix else ""
+            lines.append(f"{index}. {item_name}{affix_text}  {draw.rarity}")
+        elif draw.consumable_id:
+            lines.append(f"{index}. {_item_name(cfg, draw.consumable_id)} ×1")
+        elif draw.gold_refund > 0:
+            lines.append(f"{index}. 返还金币 {draw.gold_refund}")
+        else:
+            lines.append(f"{index}. 虚空回声散去")
+    if result.ten_draw_guarantee_triggered:
+        lines.extend(["", "✨ 十连保底已生效: epic+"])
+    lines.extend(
+        [
+            f"🔮 距 mythic+ 保底:{remaining_mythic_plus_pity(result.pity)}抽",
+            f"🌠 距 divine 保底:{remaining_divine_pity(result.pity)}抽",
+        ]
+    )
     return "\n".join(lines)
 
 

@@ -33,11 +33,13 @@ from bot.formatting import (
     render_shop,
     render_inventory,
     render_sell_result,
+    render_void_sacrifice,
     render_world_boss_attack,
     render_world_boss_status,
 )
 from game_core.affixes import format_affix
 from game_core.errors import GameError
+from game_core.void_sacrifice import parse_draw_count
 from storage import repository as repo
 
 logger = nonebot.log.logger
@@ -498,6 +500,50 @@ async def handle_sell_gear(bot: Bot, event: Event):
 # 世界Boss
 # ---------------------------------------------------------------------------
 
+cmd_void_sacrifice = on_command(
+    "虚空献祭",
+    aliases={"献祭", "十连献祭", "献祭十连"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+async def _handle_void_sacrifice_arg(bot: Bot, event: Event, arg: str):
+    text = str(arg or "").strip()
+    if event.get_plaintext().strip() in {"十连献祭", "/十连献祭", "献祭十连", "/献祭十连"}:
+        text = "10"
+    try:
+        draw_count = parse_draw_count(text)
+    except ValueError as e:
+        await _reply(bot, event, str(e))
+        return
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_void_sacrifice(
+                state.conn(), state.CFG, gid, uid, draw_count, state.now(), random.Random()
+            )
+            await _reply_to(
+                bot,
+                event,
+                result.player.name,
+                render_void_sacrifice(result, state.CFG),
+            )
+
+    await _guard(bot, event, _do())
+
+
+@cmd_void_sacrifice.handle()
+async def handle_void_sacrifice(bot: Bot, event: Event):
+    await _handle_void_sacrifice_arg(
+        bot,
+        event,
+        _arg(event, "虚空献祭", "献祭", "十连献祭", "献祭十连"),
+    )
+
+
 cmd_world_boss = on_command(
     "世界boss",
     aliases={"世界boss状态"},
@@ -666,6 +712,7 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 商店         — 查看商店
 购买 <物品>   — 购买物品
 出售装备      — 一键出售未装备武器/防具
+虚空献祭 [1/10] — 花金币献祭抽取装备
 世界boss      — 查看世界Boss状态
 进攻世界boss   — 消耗50体力进攻世界Boss
 回满生命      — 使用背包药品补满生命
@@ -733,6 +780,8 @@ async def handle_fuzzy(bot: Bot, event: Event):
         await _handle_buy_item(bot, event, parsed.arg)
     elif parsed.command == "sell_gear":
         await handle_sell_gear(bot, event)
+    elif parsed.command == "void_sacrifice":
+        await _handle_void_sacrifice_arg(bot, event, parsed.arg)
     elif parsed.command == "world_boss_status":
         await _handle_world_boss_status(bot, event)
     elif parsed.command == "world_boss_attack":

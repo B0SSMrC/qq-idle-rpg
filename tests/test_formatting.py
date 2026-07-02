@@ -3,14 +3,16 @@ from game_core.config import load_config
 from game_core.models import (
     Player, InventoryItem, ExploreResult, StepLog, SellResult, SoldItem,
 )
+from game_core.void_sacrifice import VoidSacrificeDraw, VoidSacrificePity
 from game_core.stats import hp_max
 from bot.formatting import (
     render_explore, render_status, render_ranking, render_shop, render_inventory,
-    render_sell_result, render_world_boss_status, render_world_boss_attack,
+    render_sell_result, render_void_sacrifice, render_world_boss_status,
+    render_world_boss_attack,
 )
 from app.services import (
-    WorldBossAttackResult, WorldBossDamageEntry, WorldBossStatusResult,
-    WorldBossRewardEntry,
+    VoidSacrificeResult, WorldBossAttackResult, WorldBossDamageEntry,
+    WorldBossStatusResult, WorldBossRewardEntry,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -121,6 +123,35 @@ def test_render_sell_result_lists_total_and_items():
 def test_render_sell_result_empty():
     text = render_sell_result(SellResult(), gold_after=312)
     assert "312" in text
+
+
+def test_render_void_sacrifice_lists_rewards_and_pity():
+    result = VoidSacrificeResult(
+        player=Player(group_id="g", user_id="u", name="cxh", gold=9000),
+        draw_count=10,
+        cost=10000,
+        draws=[
+            VoidSacrificeDraw(rarity="common", consumable_id="def_potion_major"),
+            VoidSacrificeDraw(rarity="epic", item_id="thunder_plate", guaranteed=True),
+            VoidSacrificeDraw(rarity="common", gold_refund=240),
+        ],
+        pity=VoidSacrificePity(
+            total_draws=10, draws_since_mythic_plus=10, draws_since_divine=10
+        ),
+        ten_draw_guarantee_triggered=True,
+    )
+
+    text = render_void_sacrifice(result, CFG)
+
+    assert "🌌 虚空献祭 ×10" in text
+    assert "消耗金币:10000" in text
+    assert "金钟罩符 ×1" in text
+    assert "雷纹锁子甲" in text
+    assert "epic" in text
+    assert "返还金币 240" in text
+    assert "十连保底已生效" in text
+    assert "距 mythic+ 保底:40抽" in text
+    assert "距 divine 保底:110抽" in text
 
 
 def test_render_world_boss_status_lists_hp_and_damage():

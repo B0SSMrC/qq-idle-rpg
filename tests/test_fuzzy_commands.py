@@ -145,3 +145,10 @@ def test_low_confidence_inputs_do_not_match():
         "boss在哪里",
     ]:
         assert parse_fuzzy_command(raw) is None
+
+
+def test_fuzzy_void_sacrifice_aliases():
+    assert parse_fuzzy_command("虚空献祭").command == "void_sacrifice"
+    assert parse_fuzzy_command("献祭").command == "void_sacrifice"
+    assert parse_fuzzy_command("虚空献祭10").arg == "10"
+    assert parse_fuzzy_command("十连献祭").arg == "10"
