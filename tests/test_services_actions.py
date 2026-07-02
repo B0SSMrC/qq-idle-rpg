@@ -5,10 +5,10 @@ from storage.db import get_conn, init_db
 from storage import repository as repo
 from game_core.config import load_config
 from game_core.models import InventoryItem
-from game_core.errors import NotEnoughGold, ItemNotFound, CharacterNotFound
+from game_core.errors import NotEnoughGold, ItemNotFound, CharacterNotFound, GameError
 from app.services import (
     register, do_explore, do_equip, do_use, do_buy,
-    do_sell_unequipped_gear, get_ranking,
+    do_sell_unequipped_gear, do_travel_depth, get_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -95,6 +95,45 @@ def test_do_sell_unequipped_gear_persists_gold_and_inventory():
         ("fine_steel_sword", 1, True),
         ("hp_potion", 3, False),
     ]
+
+
+def test_do_travel_depth_persists_allowed_depth():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.current_depth = 60
+    p.max_depth = 60
+    repo.save_player(conn, p)
+
+    moved = do_travel_depth(conn, CFG, "g", "u", "35")
+
+    assert moved.current_depth == 35
+    assert moved.max_depth == 60
+    assert repo.get_player(conn, "g", "u").current_depth == 35
+
+
+def test_do_travel_depth_supports_deepest_keyword():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.current_depth = 20
+    p.max_depth = 73
+    repo.save_player(conn, p)
+
+    moved = do_travel_depth(conn, CFG, "g", "u", "最深")
+
+    assert moved.current_depth == 73
+
+
+def test_do_travel_depth_rejects_unreached_depth():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.max_depth = 12
+    repo.save_player(conn, p)
+
+    with pytest.raises(GameError):
+        do_travel_depth(conn, CFG, "g", "u", "13")
 
 
 def test_get_ranking_group_scoped_and_sorted():

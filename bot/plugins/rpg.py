@@ -302,6 +302,29 @@ async def handle_sell_gear(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 前往 / 回层
+# ---------------------------------------------------------------------------
+
+cmd_travel = on_command("前往", aliases={"回层", "去"}, rule=to_me(), priority=10, block=True)
+
+
+@cmd_travel.handle()
+async def handle_travel(bot: Bot, event: Event):
+    depth_query = _arg(event, "前往", "回层", "去")
+    if not depth_query:
+        await _reply(bot, event, "用法: 前往 层数，例如「前往 35」或「前往 最深」")
+        return
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            p = services.do_travel_depth(state.conn(), state.CFG, gid, uid, depth_query)
+            await _reply_to(bot, event, p.name, f"已前往第 {p.current_depth} 层。\n" + render_status(p, state.CFG))
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
 # 排行榜 / 排名
 # ---------------------------------------------------------------------------
 
@@ -338,6 +361,7 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 商店         — 查看商店
 购买 <物品>   — 购买物品
 出售装备      — 一键出售未装备武器/防具
+前往 <层数>   — 回到已探索过的层数刷资源
 排行榜       — 等级榜
 排行榜 深度   — 深度榜
 ──────────────

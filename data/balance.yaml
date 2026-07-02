@@ -1,7 +1,7 @@
 stamina:
   regen_minutes: 1      # 每 1 分钟结算一次
   regen_amount: 10      # 每次回 10 点 → 即 1 分钟回 10 点
-  max: 60
+  max: 100
   cost_per_step: 5      # 满体力可走 12 步
 leveling:
   base_exp: 100         # 1→2 级所需经验

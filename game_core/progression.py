@@ -23,7 +23,6 @@ def grant_exp(player: Player, amount: int, cfg: GameConfig) -> int:
 
 
 def apply_defeat(player: Player, cfg: GameConfig) -> None:
-    """重伤回城:损失金币、回到第 1 层、满血。max_depth 保留。"""
+    """重伤休整:损失金币、满血恢复,但保留当前探索层。"""
     player.gold -= int(player.gold * cfg.balance.gold_loss_pct)
-    player.current_depth = 1
     player.current_hp = hp_max(player, cfg)

@@ -1,7 +1,7 @@
 import random
 from pathlib import Path
 from game_core.config import load_config
-from game_core.models import Player, Buff
+from game_core.models import Player, Buff, InventoryItem
 from game_core.stats import hp_max, attack
 from game_core.exploration import explore
 
@@ -51,7 +51,7 @@ def test_max_depth_tracks_progress():
     assert p.max_depth == max(start_max, res.depth_after)
 
 
-def test_defeat_resets_depth_to_one():
+def test_defeat_preserves_current_depth():
     # 1 级、深处、塞满体力,对上强怪极可能战败;遍历多个种子找到一次战败
     defeated_seen = False
     for seed in range(50):
@@ -62,7 +62,8 @@ def test_defeat_resets_depth_to_one():
         res = explore(p, CFG, now=0, rng=random.Random(seed))
         if res.defeated:
             defeated_seen = True
-            assert p.current_depth == 1        # 回城
+            assert p.current_depth == res.depth_after
+            assert p.current_depth >= 15       # 不再跌回第 1 层
             assert p.max_depth >= 15           # 历史最深保留
             assert p.current_hp == hp_max(p, CFG)
             break
@@ -88,6 +89,23 @@ def test_explore_does_not_crash_when_no_event_matches_depth():
     p.current_depth = 99
     res = explore(p, cfg, now=p.stamina_at, rng=random.Random(1))
     assert len(res.steps) >= 1          # 没有崩溃,正常产出步骤
+
+
+def test_deep_dungeon_has_playable_depth_95_content():
+    p = _player(stamina=25, level=55)
+    p.current_depth = 95
+    p.max_depth = 95
+    p.inventory = [
+        InventoryItem(item_id="void_cleaver_sword", equipped=True),
+        InventoryItem(item_id="mountain_guard_plate", equipped=True),
+    ]
+    p.current_hp = hp_max(p, CFG)
+
+    res = explore(p, CFG, now=p.stamina_at, rng=random.Random(7))
+
+    assert len(res.steps) >= 1
+    assert res.depth_before == 95
+    assert res.depth_after >= 95
 
 
 def test_buffs_consumed_during_exploration():

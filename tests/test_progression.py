@@ -48,6 +48,6 @@ def test_apply_defeat_penalty():
     p = _player(level=3, gold=200, hp=1)
     apply_defeat(p, CFG)
     assert p.gold == 190                # 损失 5%
-    assert p.current_depth == 1         # 回到第 1 层
+    assert p.current_depth == 5         # 战败后保留当前层
     assert p.max_depth == 8             # 历史最深保留
     assert p.current_hp == hp_max(p, CFG)   # 满血回城

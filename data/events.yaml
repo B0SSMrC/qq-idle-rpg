@@ -25,6 +25,20 @@
   depth_max: 50
   reward_gold: [70, 150]
 
+- id: treasure_abyss
+  type: treasure
+  weight: 20
+  depth_min: 51
+  depth_max: 75
+  reward_gold: [140, 260]
+
+- id: treasure_hundred
+  type: treasure
+  weight: 18
+  depth_min: 76
+  depth_max: 100
+  reward_gold: [240, 420]
+
 # 陷阱 — 按深度 3 档
 - id: trap_shallow
   type: trap
@@ -46,6 +60,20 @@
   depth_min: 36
   depth_max: 50
   damage_pct: 0.15
+
+- id: trap_abyss
+  type: trap
+  weight: 8
+  depth_min: 51
+  depth_max: 75
+  damage_pct: 0.18
+
+- id: trap_hundred
+  type: trap
+  weight: 9
+  depth_min: 76
+  depth_max: 100
+  damage_pct: 0.22
 
 # flavor — 中式地牢叙事
 - id: flavor

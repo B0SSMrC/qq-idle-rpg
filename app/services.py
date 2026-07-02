@@ -90,6 +90,27 @@ def do_sell_unequipped_gear(conn, cfg, group_id, user_id):
     return result, p
 
 
+def do_travel_depth(conn, cfg, group_id, user_id, depth_query) -> Player:
+    p = _require(conn, cfg, group_id, user_id)
+    query = str(depth_query).strip()
+    if query in {"最深", "最深层", "max", "deepest"}:
+        target = p.max_depth
+    else:
+        try:
+            target = int(query)
+        except ValueError as exc:
+            raise GameError("用法: 前往 层数，例如「前往 35」或「前往 最深」") from exc
+
+    if target < 1:
+        raise GameError("层数必须大于等于 1")
+    if target > p.max_depth:
+        raise GameError(f"你最深只到过第 {p.max_depth} 层，暂时不能前往第 {target} 层")
+
+    p.current_depth = target
+    repo.save_player(conn, p)
+    return p
+
+
 def shop_list(cfg) -> list[ItemDef]:
     return _shop.list_shop(cfg)
 
