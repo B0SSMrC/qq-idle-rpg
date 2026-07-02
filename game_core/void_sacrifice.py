@@ -112,9 +112,9 @@ def parse_draw_count(arg: str) -> int:
     text = str(arg or "").strip()
     if text == "":
         return 1
-    if text in {"1", "一", "一次", "单抽"}:
+    if text == "1":
         return 1
-    if text in {"10", "十", "十连", "10连", "十连献祭", "献祭十连"}:
+    if text in {"10", "十连献祭", "献祭十连"}:
         return 10
     raise ValueError("用法:虚空献祭 [次数]，支持 1 或 10")
 

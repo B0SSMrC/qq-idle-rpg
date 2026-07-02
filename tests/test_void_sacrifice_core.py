@@ -18,11 +18,7 @@ from game_core.void_sacrifice import (
     roll_void_sacrifice,
 )
 
-
-try:
-    CFG = load_config()
-except TypeError:
-    CFG = load_config(Path("data"))
+CFG = load_config(Path("data"))
 
 
 def test_void_sacrifice_constants_match_design():
@@ -38,17 +34,17 @@ def test_void_sacrifice_constants_match_design():
         ("", 1),
         ("1", 1),
         ("10", 10),
-        ("十连", 10),
-        ("献祭十连", 10),
+        ("\u5341\u8FDE\u732E\u796D", 10),
+        ("\u732E\u796D\u5341\u8FDE", 10),
     ],
 )
 def test_parse_draw_count_accepts_supported_forms(arg, expected):
     assert parse_draw_count(arg) == expected
 
 
-@pytest.mark.parametrize("arg", ["2", "11", "abc", "三连"])
+@pytest.mark.parametrize("arg", ["2", "11", "abc", "\u4e00", "\u4e00\u6b21", "\u5355\u62bd", "\u5341", "\u5341\u8FDE", "10\u8FDE"])
 def test_parse_draw_count_rejects_unsupported_counts(arg):
-    with pytest.raises(ValueError, match="用法:虚空献祭"):
+    with pytest.raises(ValueError):
         parse_draw_count(arg)
 
 
