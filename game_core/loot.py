@@ -117,7 +117,7 @@ def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig) -> int | None:
     if item.slot == "weapon":
         raw_price = item.atk / lower_stat * lower.price * 2.7
     elif item.slot == "armor":
-        raw_price = item.defense / lower_stat * 35 * lower.price
+        raw_price = item.defense / lower_stat * 3.5 * lower.price
     else:
         return None
     return max(1, int(raw_price))
