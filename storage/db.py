@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS inventory (
     player_id   INTEGER NOT NULL REFERENCES players(id),
     item_id     TEXT NOT NULL,
     quantity    INTEGER NOT NULL DEFAULT 1,
-    equipped    INTEGER NOT NULL DEFAULT 0
+    equipped    INTEGER NOT NULL DEFAULT 0,
+    affix       TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory(player_id);
@@ -125,6 +126,12 @@ def _ensure_player_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE players ADD COLUMN {name} {ddl}")
 
 
+def _ensure_inventory_columns(conn: sqlite3.Connection) -> None:
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(inventory)")}
+    if "affix" not in cols:
+        conn.execute("ALTER TABLE inventory ADD COLUMN affix TEXT NOT NULL DEFAULT ''")
+
+
 def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = False) -> None:
     """升级旧存档：建 buffs 表 + 迁移旧物品 ID。
 
@@ -156,6 +163,7 @@ def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = Fa
         "CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id)")
 
     _ensure_player_columns(conn)
+    _ensure_inventory_columns(conn)
 
     if (legacy_item_migration_needed
             and not _migration_applied(conn, LEGACY_ITEM_ID_MIGRATION)):

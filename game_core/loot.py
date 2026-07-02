@@ -6,6 +6,7 @@ from game_core.models import (
 )
 from game_core.errors import GameError, ItemNotFound, InvalidSlot
 from game_core.stats import hp_max
+from game_core.affixes import roll_affix
 
 
 def roll_drops(monster: MonsterDef, rng: random.Random) -> list[str]:
@@ -19,12 +20,27 @@ def _find(player: Player, item_id: str) -> InventoryItem | None:
     return None
 
 
-def add_item(player: Player, item_id: str, qty: int = 1) -> None:
+def add_item(player: Player, item_id: str, qty: int = 1,
+             cfg: GameConfig | None = None, rng: random.Random | None = None) -> InventoryItem:
+    item = cfg.items.get(item_id) if cfg else None
+    if item and item.slot in ("weapon", "armor"):
+        added = None
+        for _ in range(qty):
+            added = InventoryItem(
+                item_id=item_id,
+                quantity=1,
+                affix=roll_affix(item.slot, rng),
+            )
+            player.inventory.append(added)
+        return added
     existing = _find(player, item_id)
     if existing and not existing.equipped:
         existing.quantity += qty
+        return existing
     else:
-        player.inventory.append(InventoryItem(item_id=item_id, quantity=qty))
+        added = InventoryItem(item_id=item_id, quantity=qty)
+        player.inventory.append(added)
+        return added
 
 
 def equip(player: Player, item_id: str, cfg: GameConfig) -> None:
@@ -127,6 +143,17 @@ def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig) -> int | None:
     else:
         return None
     return max(1, int(raw_price))
+
+
+def reroll_affix(player: Player, cfg: GameConfig, slot: str,
+                 rng: random.Random | None = None) -> tuple[str, str, InventoryItem]:
+    for inv in player.inventory:
+        item = cfg.items.get(inv.item_id)
+        if inv.equipped and item is not None and item.slot == slot:
+            old = inv.affix
+            inv.affix = roll_affix(slot, rng)
+            return old, inv.affix, inv
+    raise ItemNotFound("当前没有已装备的" + ("武器" if slot == "weapon" else "装备"))
 
 
 def sell_unequipped_gear(player: Player, cfg: GameConfig) -> SellResult:

@@ -43,3 +43,18 @@ def test_deterministic_with_same_seed():
     r1 = resolve_combat(20, 5, 50, m, random.Random(123))
     r2 = resolve_combat(20, 5, 50, m, random.Random(123))
     assert (r1.won, r1.rounds, r1.hp_after) == (r2.won, r2.rounds, r2.hp_after)
+
+
+def test_lifesteal_restores_hp_after_player_hit():
+    m = _monster(hp=20, atk=1, defense=0)
+    r = resolve_combat(
+        player_atk=10,
+        player_def=0,
+        player_hp=50,
+        monster=m,
+        rng=random.Random(1),
+        player_lifesteal=0.5,
+        player_hp_max=60,
+    )
+    assert r.won is True
+    assert r.hp_after > 50

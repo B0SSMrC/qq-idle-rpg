@@ -2,7 +2,7 @@ from pathlib import Path
 from game_core.config import load_config
 from game_core.models import Player, InventoryItem
 from game_core.models import Buff
-from game_core.stats import hp_max, attack, defense, power
+from game_core.stats import hp_max, attack, defense, lifesteal, power
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CFG = load_config(DATA_DIR)
@@ -74,3 +74,31 @@ def test_overdrive_reduces_attack_and_defense_until_expiry():
     p.last_active_at = 1300
     assert attack(p, CFG) == 12
     assert defense(p, CFG) == 7
+
+
+def test_equipped_affixes_modify_stats():
+    p = _player(level=1, inv=[
+        InventoryItem(
+            item_id="iron_sword",
+            equipped=True,
+            affix='{"name":"锋锐","effects":{"atk_pct":0.2}}',
+        ),
+        InventoryItem(
+            item_id="leather_armor",
+            equipped=True,
+            affix='{"name":"厚血","effects":{"hp_pct":0.1}}',
+        ),
+    ])
+    assert attack(p, CFG) == int((12 + 5) * 1.2)
+    assert hp_max(p, CFG) == int((120 + 35) * 1.1)
+
+
+def test_lifesteal_reads_weapon_affix():
+    p = _player(level=1, inv=[
+        InventoryItem(
+            item_id="iron_sword",
+            equipped=True,
+            affix='{"name":"嗜血","effects":{"lifesteal_pct":0.12}}',
+        ),
+    ])
+    assert lifesteal(p, CFG) == 0.12

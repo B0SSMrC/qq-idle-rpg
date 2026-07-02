@@ -133,3 +133,13 @@ def test_buffs_preserved_when_no_steps_are_taken():
     assert res.steps == []
     assert len(p.buffs) == 1
     assert p.buffs[0].steps_left == 4
+
+
+def test_depth_80_and_deeper_forces_combat_events():
+    p = _player(stamina=25, level=80)
+    p.current_depth = 80
+    p.max_depth = 80
+    p.current_hp = hp_max(p, CFG)
+    res = explore(p, CFG, now=p.stamina_at, rng=random.Random(2))
+    assert res.steps
+    assert all(step.kind == "combat" for step in res.steps)

@@ -166,3 +166,33 @@ def test_init_db_adds_stamina_refill_columns_to_existing_players_table():
     assert "stamina_refill_window_start" in cols
     assert "stamina_refill_window_amount" in cols
     assert "overdrive_until" in cols
+
+
+def test_init_db_adds_inventory_affix_column_to_existing_inventory_table():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE players (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            stamina_at INTEGER NOT NULL,
+            current_hp INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            last_active_at INTEGER NOT NULL,
+            UNIQUE(group_id, user_id)
+        );
+        CREATE TABLE inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER NOT NULL REFERENCES players(id),
+            item_id TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            equipped INTEGER NOT NULL DEFAULT 0
+        );
+    """)
+    init_db(conn)
+
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(inventory)")}
+    assert "affix" in cols

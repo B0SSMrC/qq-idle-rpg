@@ -9,7 +9,8 @@ from game_core.errors import NotEnoughGold, ItemNotFound, CharacterNotFound, Gam
 from app.services import (
     register, do_explore, do_equip, do_use, do_buy,
     do_sell_unequipped_gear, do_travel_depth, do_travel_and_explore,
-    do_refill_stamina, do_buy_and_equip, do_refill_hp, do_use_many, get_ranking,
+    do_refill_stamina, do_buy_and_equip, do_refill_hp, do_use_many,
+    do_reforge_equipped, get_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -76,6 +77,21 @@ def test_do_buy_and_equip_buys_and_equips_shop_gear():
     assert result.player.gold == 50
     reloaded = repo.get_player(conn, "g", "u")
     assert any(i.item_id == "iron_sword" and i.equipped for i in reloaded.inventory)
+
+
+def test_do_buy_and_equip_equips_newly_bought_same_item():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.gold = 100
+    p.inventory = [InventoryItem(item_id="iron_sword", quantity=1, affix="")]
+    repo.save_player(conn, p)
+
+    result = do_buy_and_equip(conn, CFG, "g", "u", "铁剑")
+
+    equipped = [i for i in result.player.inventory if i.item_id == "iron_sword" and i.equipped]
+    assert len(equipped) == 1
+    assert equipped[0].affix
 
 
 def test_do_buy_and_equip_rejects_consumables_before_spending_gold():
@@ -369,3 +385,41 @@ def test_get_ranking_group_scoped_and_sorted():
     register(conn, CFG, "g2", "z", "Z", now=0)    # 别的群,不应出现
     ranked = get_ranking(conn, CFG, "g1", key="level")
     assert [p.name for p in ranked] == ["B", "C", "A"]
+
+
+def test_do_reforge_equipped_weapon_costs_gold_and_replaces_affix():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.gold = 500
+    p.inventory = [InventoryItem(
+        item_id="iron_sword",
+        equipped=True,
+        affix='{"name":"旧词条","effects":{"atk_pct":0.01}}',
+    )]
+    repo.save_player(conn, p)
+
+    result = do_reforge_equipped(conn, CFG, "g", "u", "武器", 2, random.Random(1))
+
+    assert result.times == 2
+    assert result.cost == 400
+    assert result.player.gold == 100
+    assert result.old_affix
+    assert "旧词条" in result.old_affix
+    assert result.new_affix
+    assert result.old_affix != result.new_affix
+
+
+def test_do_reforge_equipped_runs_only_affordable_times():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.gold = 250
+    p.inventory = [InventoryItem(item_id="iron_sword", equipped=True)]
+    repo.save_player(conn, p)
+
+    result = do_reforge_equipped(conn, CFG, "g", "u", "武器", 10, random.Random(1))
+
+    assert result.times == 1
+    assert result.cost == 200
+    assert result.player.gold == 50

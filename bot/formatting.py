@@ -2,6 +2,7 @@ from __future__ import annotations
 import random
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
+from game_core.affixes import format_affix
 
 COMBAT_WIN_TEMPLATES = [
     "第{depth}层 ⚔️ {monster} → {rounds}回合击败  +{exp}exp +{gold}金币{extra}",
@@ -53,13 +54,18 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
 
 
 def render_status(player: Player, cfg: GameConfig) -> str:
+    equipped = []
+    for i in player.inventory:
+        if i.equipped:
+            affix = format_affix(i.affix)
+            equipped.append(_item_name(cfg, i.item_id) + (f"[{affix}]" if affix else ""))
     lines = [
         f"🛡️ {player.name}  Lv.{player.level}  (当前世界)",
         f"经验 {player.exp}",
         f"❤️ HP {player.current_hp}/{hp_max(player, cfg)}   ⚡ 体力 {player.stamina}/{cfg.balance.stamina_max}",
         f"⚔️ 攻击 {attack(player, cfg)}   🛡️ 防御 {defense(player, cfg)}   💪 战力 {power(player, cfg)}",
         f"💰 金币 {player.gold}   🏆 最深 第{player.max_depth}层",
-        "🎒 装备:" + ("、".join(_item_name(cfg, i.item_id) for i in player.inventory if i.equipped) or "无"),
+        "🎒 装备:" + ("、".join(equipped) or "无"),
     ]
     if player.buffs:
         lines.append("✨ Buff:")
@@ -169,5 +175,7 @@ def render_inventory(player: Player, cfg: GameConfig) -> str:
     lines = ["🎒 背包"]
     for it in player.inventory:
         tag = "(已装备)" if it.equipped else ""
-        lines.append(f"・{_item_name(cfg, it.item_id)} ×{it.quantity}{tag}")
+        affix = format_affix(it.affix)
+        affix_text = f" [{affix}]" if affix else ""
+        lines.append(f"・{_item_name(cfg, it.item_id)} ×{it.quantity}{tag}{affix_text}")
     return "\n".join(lines)

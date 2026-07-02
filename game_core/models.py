@@ -93,6 +93,7 @@ class InventoryItem:
     item_id: str
     quantity: int = 1
     equipped: bool = False
+    affix: str = ""
 
 
 @dataclass

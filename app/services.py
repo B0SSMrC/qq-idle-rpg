@@ -55,6 +55,16 @@ class UseManyResult:
     overdrive_triggered: bool = False
 
 
+@dataclass
+class ReforgeResult:
+    player: Player
+    slot: str
+    times: int
+    cost: int
+    old_affix: str
+    new_affix: str
+
+
 def _require(conn: sqlite3.Connection, cfg: GameConfig,
              group_id: str, user_id: str) -> Player:
     p = repo.get_player(conn, group_id, user_id)
@@ -121,8 +131,12 @@ def do_buy_and_equip(conn, cfg, group_id, user_id, item_query) -> BuyEquipResult
     if item.slot not in ("weapon", "armor"):
         raise InvalidSlot(f"{item.name} 不能装备")
     cost = item.price or 0
-    _shop.buy(p, item_id, cfg)
-    _loot.equip(p, item_id, cfg)
+    bought = _shop.buy(p, item_id, cfg)
+    for other in p.inventory:
+        other_item = cfg.items.get(other.item_id)
+        if other.equipped and other_item is not None and other_item.slot == item.slot:
+            other.equipped = False
+    bought.equipped = True
     repo.save_player(conn, p)
     return BuyEquipResult(player=p, item_name=item.name, cost=cost)
 
@@ -161,6 +175,42 @@ def do_use(conn, cfg, group_id, user_id, item_query, quantity=1, now=None) -> Pl
             _record_stamina_refill(p, max(0, p.stamina - before_stamina), now)
     repo.save_player(conn, p)
     return p
+
+
+def _parse_gear_slot(slot_query: str) -> str:
+    text = str(slot_query).strip()
+    if text in {"武器", "weapon"}:
+        return "weapon"
+    if text in {"装备", "防具", "armor"}:
+        return "armor"
+    raise GameError("用法:重铸 武器/装备 [次数]")
+
+
+def do_reforge_equipped(conn, cfg, group_id, user_id, slot_query, times, rng) -> ReforgeResult:
+    p = _require(conn, cfg, group_id, user_id)
+    slot = _parse_gear_slot(slot_query)
+    requested = max(1, int(times))
+    affordable = p.gold // 200
+    if affordable <= 0:
+        raise NotEnoughGold(f"金币不足(需 200,当前 {p.gold})")
+    actual = min(requested, affordable)
+    old_affix = ""
+    new_affix = ""
+    for i in range(actual):
+        previous_affix, new_affix, _ = _loot.reroll_affix(p, cfg, slot, rng)
+        if i == 0:
+            old_affix = previous_affix or "无词条"
+    cost = actual * 200
+    p.gold -= cost
+    repo.save_player(conn, p)
+    return ReforgeResult(
+        player=p,
+        slot=slot,
+        times=actual,
+        cost=cost,
+        old_affix=old_affix,
+        new_affix=new_affix,
+    )
 
 
 def do_refill_hp(conn, cfg, group_id, user_id) -> HpRefillResult:

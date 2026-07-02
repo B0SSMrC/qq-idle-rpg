@@ -11,14 +11,20 @@ def _hit(attacker_atk: int, defender_def: int, rng: random.Random) -> int:
 
 
 def resolve_combat(player_atk: int, player_def: int, player_hp: int,
-                   monster: MonsterDef, rng: random.Random) -> CombatResult:
+                   monster: MonsterDef, rng: random.Random,
+                   player_lifesteal: float = 0.0,
+                   player_hp_max: int | None = None) -> CombatResult:
     """自动回合制结算。返回胜负、回合数、受到的总伤害、剩余 HP。"""
     mhp = monster.hp
     start_hp = player_hp
     hp = player_hp
+    max_hp = player_hp_max or player_hp
     for r in range(1, MAX_ROUNDS + 1):
         # 玩家先手
-        mhp -= _hit(player_atk, monster.defense, rng)
+        damage = _hit(player_atk, monster.defense, rng)
+        mhp -= damage
+        if player_lifesteal > 0:
+            hp = min(max_hp, hp + max(1, int(damage * player_lifesteal)))
         if mhp <= 0:
             return CombatResult(won=True, rounds=r,
                                 damage_taken=start_hp - hp, hp_after=hp)

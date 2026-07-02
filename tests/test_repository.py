@@ -48,6 +48,21 @@ def test_save_persists_changes_and_inventory():
     assert inv["hp_potion"].quantity == 3
 
 
+def test_save_and_load_inventory_affix():
+    conn = _conn()
+    p = create_player(conn, _player())
+    p.inventory.append(InventoryItem(
+        item_id="iron_sword",
+        quantity=1,
+        equipped=True,
+        affix='{"name":"锋锐","effects":{"atk_pct":0.2}}',
+    ))
+    save_player(conn, p)
+
+    loaded = get_player(conn, "g", "u")
+    assert loaded.inventory[0].affix == '{"name":"锋锐","effects":{"atk_pct":0.2}}'
+
+
 def test_save_inventory_no_duplicates_on_resave():
     conn = _conn()
     p = create_player(conn, _player())

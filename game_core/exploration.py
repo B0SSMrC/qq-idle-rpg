@@ -5,6 +5,13 @@ from game_core import stats, stamina as stamina_mod, combat, progression, loot
 
 
 def _pick_event(cfg: GameConfig, depth: int, rng: random.Random):
+    if depth >= 80:
+        combat_events = [
+            e for e in cfg.events
+            if e.type == "combat" and e.depth_min <= depth <= e.depth_max
+        ]
+        if combat_events:
+            return combat_events[0]
     pool = [e for e in cfg.events if e.depth_min <= depth <= e.depth_max]
     if not pool:                      # 该层无适配事件时回退到全部事件,避免探索中途崩溃
         pool = cfg.events
@@ -50,7 +57,9 @@ def explore(player: Player, cfg: GameConfig, now: int,
             monster = _pick_monster(cfg, depth, rng)
             res = combat.resolve_combat(
                 stats.attack(player, cfg), stats.defense(player, cfg),
-                player.current_hp, monster, rng)
+                player.current_hp, monster, rng,
+                player_lifesteal=stats.lifesteal(player, cfg),
+                player_hp_max=stats.hp_max(player, cfg))
             player.current_hp = res.hp_after
             if not res.won:
                 progression.apply_defeat(player, cfg)
@@ -59,10 +68,11 @@ def explore(player: Player, cfg: GameConfig, now: int,
                                      rounds=res.rounds, hp_after=player.current_hp))
                 defeated = True
                 break
-            gold = rng.randint(monster.gold_min, monster.gold_max)
+            gold = int(rng.randint(monster.gold_min, monster.gold_max)
+                       * (1 + stats.gold_bonus(player, cfg)))
             drops = loot.roll_drops(monster, rng)
             for item_id in drops:
-                loot.add_item(player, item_id)
+                loot.add_item(player, item_id, cfg=cfg, rng=rng)
                 items_gained.append(item_id)
             player.gold += gold
             ups = progression.grant_exp(player, monster.exp, cfg)

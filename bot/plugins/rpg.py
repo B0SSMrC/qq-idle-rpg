@@ -32,6 +32,7 @@ from bot.formatting import (
     render_inventory,
     render_sell_result,
 )
+from game_core.affixes import format_affix
 from game_core.errors import GameError
 from storage import repository as repo
 
@@ -362,6 +363,47 @@ async def handle_refill_stamina(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 重铸词条
+# ---------------------------------------------------------------------------
+
+cmd_reforge = on_command("重铸", rule=to_me(), priority=10, block=True)
+
+
+@cmd_reforge.handle()
+async def handle_reforge(bot: Bot, event: Event):
+    arg = _arg(event, "重铸")
+    parts = arg.split()
+    if not parts:
+        await _reply(bot, event, "用法:重铸 武器/装备 [次数]")
+        return
+    slot_query = parts[0]
+    try:
+        times = int(parts[1]) if len(parts) > 1 else 1
+    except ValueError:
+        await _reply(bot, event, "次数必须是正整数")
+        return
+    if times <= 0:
+        await _reply(bot, event, "次数必须是正整数")
+        return
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_reforge_equipped(
+                state.conn(), state.CFG, gid, uid, slot_query, times, random.Random()
+            )
+            text = (
+                f"🔨 重铸完成:{result.times}次,花费{result.cost}金币\n"
+                f"旧词条:{format_affix(result.old_affix) or result.old_affix or '无'}\n"
+                f"新词条:{format_affix(result.new_affix) or result.new_affix or '无'}\n"
+                + render_status(result.player, state.CFG)
+            )
+            await _reply_to(bot, event, result.player.name, text)
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
 # 商店
 # ---------------------------------------------------------------------------
 
@@ -515,6 +557,7 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 出售装备      — 一键出售未装备武器/防具
 回满生命      — 使用背包药品补满生命
 回满体力      — 花金币购买回气丹并补满体力
+重铸 武器/装备 [次数] — 花金币重随机词条
 前往 <层数>   — 回到已探索过的层数刷资源
 回到 <层数> 并探索 — 回层后立刻探索
 排行榜       — 等级榜

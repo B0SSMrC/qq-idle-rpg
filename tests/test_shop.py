@@ -1,4 +1,5 @@
 import pytest
+import random
 from pathlib import Path
 from game_core.config import load_config
 from game_core.models import Player
@@ -21,6 +22,13 @@ def test_buy_deducts_gold_and_adds_item():
     buy(p, "hp_potion", CFG)           # price 12
     assert p.gold == 88
     assert any(i.item_id == "hp_potion" for i in p.inventory)
+
+
+def test_buy_gear_rolls_affix():
+    p = Player(group_id="g", user_id="u", name="勇者", gold=100)
+    buy(p, "iron_sword", CFG, rng=random.Random(1))
+    sword = next(i for i in p.inventory if i.item_id == "iron_sword")
+    assert sword.affix
 
 
 def test_buy_insufficient_gold():
