@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
 
 import bot.state as state
 from app import services
-from bot.command_parsing import parse_item_quantity, parse_travel_explore_arg
+from bot.command_parsing import parse_multi_item_quantities, parse_travel_explore_arg
 from bot.formatting import (
     render_explore,
     render_status,
@@ -194,6 +194,39 @@ async def handle_equip(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 购买并装备
+# ---------------------------------------------------------------------------
+
+cmd_buy_equip = on_command(
+    "购买装备",
+    aliases={"购买武器", "购买并装备", "买装备", "买武器"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+@cmd_buy_equip.handle()
+async def handle_buy_equip(bot: Bot, event: Event):
+    item_query = _arg(event, "购买装备", "购买武器", "购买并装备", "买装备", "买武器")
+    if not item_query:
+        await _reply(bot, event, "用法:购买装备 物品名")
+        return
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_buy_and_equip(state.conn(), state.CFG, gid, uid, item_query)
+            text = (
+                f"✅ 已购买并装备【{result.item_name}】,花费{result.cost}金币。\n"
+                + render_status(result.player, state.CFG)
+            )
+            await _reply_to(bot, event, result.player.name, text)
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
 # 卸下
 # ---------------------------------------------------------------------------
 
@@ -227,30 +260,75 @@ cmd_use = on_command("使用", rule=to_me(), priority=10, block=True)
 async def handle_use(bot: Bot, event: Event):
     item_arg = _arg(event, "使用")
     try:
-        item_query, quantity = parse_item_quantity(item_arg)
+        requests = parse_multi_item_quantities(item_arg)
     except ValueError as e:
         await _reply(bot, event, str(e))
         return
-    if not item_query:
+    if not requests:
         await _reply(bot, event, "用法:使用 物品名")
         return
     gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
-            before = repo.get_player(state.conn(), gid, uid)
-            previous_overdrive = before.overdrive_until if before is not None else 0
             now = state.now()
-            p = services.do_use(
-                state.conn(), state.CFG, gid, uid, item_query, quantity=quantity, now=now
+            result = services.do_use_many(
+                state.conn(), state.CFG, gid, uid, requests, now=now
             )
-            text = render_status(p, state.CFG)
-            if p.overdrive_until > previous_overdrive and p.overdrive_until > now:
-                text = (
-                    "💥 你触发了「爆气」负面buff:攻击下降15%,防御下降20%,持续10分钟。\n"
-                    + text
-                )
-            await _reply_to(bot, event, p.name, text)
+            lines = ["✅ 使用结算"]
+            for entry in result.entries:
+                if entry.used > 0:
+                    extra = ""
+                    if entry.bought > 0:
+                        extra = f" (自动购买{entry.bought}个,花费{entry.cost}金币)"
+                    line = f"・{entry.name} ×{entry.used}{extra}"
+                    if entry.error:
+                        line += f"；另有失败:{entry.error}"
+                    lines.append(line)
+                else:
+                    lines.append(f"・{entry.name} 未使用:{entry.error}")
+            if result.overdrive_triggered:
+                lines.append("💥 你触发了「爆气」负面buff:攻击下降15%,防御下降20%,持续10分钟。")
+            lines.append(render_status(result.player, state.CFG))
+            await _reply_to(bot, event, result.player.name, "\n".join(lines))
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
+# 回满生命
+# ---------------------------------------------------------------------------
+
+cmd_refill_hp = on_command(
+    "回满生命",
+    aliases={"回满血", "补满生命", "补满血"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+@cmd_refill_hp.handle()
+async def handle_refill_hp(bot: Bot, event: Event):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_refill_hp(state.conn(), state.CFG, gid, uid)
+            if result.hp_before >= result.hp_max:
+                lines = ["生命已满,无需使用药品。"]
+            elif result.used_items:
+                used = "、".join(f"{item.name}×{item.quantity}" for item in result.used_items)
+                lines = [
+                    f"✅ 已回复生命:{result.hp_before} → {result.hp_after}/{result.hp_max}",
+                    f"使用:{used}",
+                ]
+                if not result.fully_healed:
+                    lines.append("背包回复药已用完,生命尚未回满。")
+            else:
+                lines = ["背包里没有可回复生命的消耗品。"]
+            lines.append(render_status(result.player, state.CFG))
+            await _reply_to(bot, event, result.player.name, "\n".join(lines))
 
     await _guard(bot, event, _do())
 
@@ -427,12 +505,15 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 状态         — 查看角色面板
 背包         — 查看物品
 装备 <物品>   — 装备武器/护甲
+购买装备 <物品> — 购买武器/护甲并立即装备
 卸下 <物品>   — 卸下装备
 使用 <物品>   — 使用消耗品(药水/丹药/符箓)
 使用 <物品> <数量> — 批量使用消耗品
+使用 <物品A> <物品B> — 多物品使用,缺少时自动购买
 商店         — 查看商店
 购买 <物品>   — 购买物品
 出售装备      — 一键出售未装备武器/防具
+回满生命      — 使用背包药品补满生命
 回满体力      — 花金币购买回气丹并补满体力
 前往 <层数>   — 回到已探索过的层数刷资源
 回到 <层数> 并探索 — 回层后立刻探索

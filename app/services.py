@@ -1,15 +1,58 @@
 from __future__ import annotations
 import sqlite3
 import math
+from dataclasses import dataclass, field
 from game_core.models import Player, make_new_player, GameConfig
 from game_core.stats import hp_max
 from game_core.stamina import settle_stamina
-from game_core.errors import DuplicateName, CharacterNotFound, GameError, NotEnoughGold
+from game_core.errors import (
+    DuplicateName, CharacterNotFound, GameError, NotEnoughGold, InvalidSlot,
+)
 from storage import repository as repo
 
 STAMINA_REFILL_WINDOW_SECONDS = 5 * 60
 STAMINA_REFILL_WINDOW_LIMIT = 300
 OVERDRIVE_SECONDS = 10 * 60
+
+
+@dataclass
+class ItemUseSummary:
+    name: str
+    quantity: int
+
+
+@dataclass
+class BuyEquipResult:
+    player: Player
+    item_name: str
+    cost: int
+
+
+@dataclass
+class HpRefillResult:
+    player: Player
+    hp_before: int
+    hp_after: int
+    hp_max: int
+    used_items: list[ItemUseSummary] = field(default_factory=list)
+    fully_healed: bool = False
+
+
+@dataclass
+class UseManyEntry:
+    name: str
+    requested: int
+    used: int = 0
+    bought: int = 0
+    cost: int = 0
+    error: str = ""
+
+
+@dataclass
+class UseManyResult:
+    player: Player
+    entries: list[UseManyEntry] = field(default_factory=list)
+    overdrive_triggered: bool = False
 
 
 def _require(conn: sqlite3.Connection, cfg: GameConfig,
@@ -18,6 +61,10 @@ def _require(conn: sqlite3.Connection, cfg: GameConfig,
     if p is None:
         raise CharacterNotFound("你在当前世界还没有角色,先发「注册 角色名」吧~")
     return p
+
+
+def _inventory_count(player: Player, item_id: str) -> int:
+    return sum(inv.quantity for inv in player.inventory if inv.item_id == item_id)
 
 
 def register(conn: sqlite3.Connection, cfg: GameConfig,
@@ -67,6 +114,19 @@ def do_equip(conn, cfg, group_id, user_id, item_query) -> Player:
     return p
 
 
+def do_buy_and_equip(conn, cfg, group_id, user_id, item_query) -> BuyEquipResult:
+    p = _require(conn, cfg, group_id, user_id)
+    item_id = find_item_id(cfg, item_query)
+    item = cfg.items[item_id]
+    if item.slot not in ("weapon", "armor"):
+        raise InvalidSlot(f"{item.name} 不能装备")
+    cost = item.price or 0
+    _shop.buy(p, item_id, cfg)
+    _loot.equip(p, item_id, cfg)
+    repo.save_player(conn, p)
+    return BuyEquipResult(player=p, item_name=item.name, cost=cost)
+
+
 def do_unequip(conn, cfg, group_id, user_id, item_query) -> Player:
     p = _require(conn, cfg, group_id, user_id)
     _loot.unequip(p, find_item_id(cfg, item_query), cfg)
@@ -101,6 +161,89 @@ def do_use(conn, cfg, group_id, user_id, item_query, quantity=1, now=None) -> Pl
             _record_stamina_refill(p, max(0, p.stamina - before_stamina), now)
     repo.save_player(conn, p)
     return p
+
+
+def do_refill_hp(conn, cfg, group_id, user_id) -> HpRefillResult:
+    p = _require(conn, cfg, group_id, user_id)
+    hp_before = p.current_hp
+    maximum = hp_max(p, cfg)
+    used_items: list[ItemUseSummary] = []
+
+    healing_items = []
+    for inv in p.inventory:
+        item = cfg.items.get(inv.item_id)
+        if item is None or item.heal <= 0 or inv.quantity <= 0:
+            continue
+        price = item.price if item.price is not None else 10**9
+        healing_items.append((price / item.heal, item.id, item.name))
+    healing_items.sort()
+
+    for _, item_id, item_name in healing_items:
+        used = 0
+        while p.current_hp < maximum and _inventory_count(p, item_id) > 0:
+            _loot.use_item(p, item_id, cfg)
+            used += 1
+        if used:
+            used_items.append(ItemUseSummary(name=item_name, quantity=used))
+        if p.current_hp >= maximum:
+            break
+
+    repo.save_player(conn, p)
+    return HpRefillResult(
+        player=p,
+        hp_before=hp_before,
+        hp_after=p.current_hp,
+        hp_max=maximum,
+        used_items=used_items,
+        fully_healed=p.current_hp >= maximum,
+    )
+
+
+def do_use_many(conn, cfg, group_id, user_id, requests, now=None) -> UseManyResult:
+    p = _require(conn, cfg, group_id, user_id)
+    if now is not None:
+        p.last_active_at = now
+    previous_overdrive = p.overdrive_until
+    entries: list[UseManyEntry] = []
+
+    for item_query, quantity in requests:
+        entry = UseManyEntry(name=str(item_query), requested=quantity)
+        try:
+            item_id = find_item_id(cfg, item_query)
+            item = cfg.items[item_id]
+            entry.name = item.name
+            if item.slot != "consumable":
+                raise InvalidSlot(f"{item.name} 不是消耗品")
+
+            missing = max(0, quantity - _inventory_count(p, item_id))
+            purchase_error = ""
+            for _ in range(missing):
+                try:
+                    _shop.buy(p, item_id, cfg)
+                    entry.bought += 1
+                    entry.cost += item.price or 0
+                except GameError as e:
+                    purchase_error = str(e)
+                    break
+
+            before_stamina = p.stamina
+            available = _inventory_count(p, item_id)
+            if available > 0:
+                entry.used = _loot.use_item(p, item_id, cfg, quantity=min(quantity, available))
+                if now is not None and item.buff_type == "stamina":
+                    _record_stamina_refill(p, max(0, p.stamina - before_stamina), now)
+            if purchase_error:
+                entry.error = purchase_error
+        except GameError as e:
+            entry.error = str(e)
+        entries.append(entry)
+
+    repo.save_player(conn, p)
+    return UseManyResult(
+        player=p,
+        entries=entries,
+        overdrive_triggered=p.overdrive_until > previous_overdrive,
+    )
 
 
 def _stamina_potion(cfg) -> ItemDef:
