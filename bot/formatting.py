@@ -235,6 +235,15 @@ def _shop_stats(it) -> str:
     return " ".join(parts)
 
 
+def _inventory_item_stats(it) -> str:
+    if it is None:
+        return ""
+    if it.slot in ("weapon", "armor"):
+        return _gear_base_stats(it)
+    stats = _shop_stats(it)
+    return f"({stats})" if stats else ""
+
+
 def render_shop(cfg: GameConfig) -> str:
     from game_core.shop import list_shop
     groups = {
@@ -274,6 +283,26 @@ def render_inventory(player: Player, cfg: GameConfig) -> str:
         affix_text = f" [{affix}]" if affix else ""
         lines.append(f"・{_item_name(cfg, it.item_id)} ×{it.quantity}{tag}{affix_text}")
     return "\n".join(lines)
+
+
+def _render_inventory_with_stats(player: Player, cfg: GameConfig) -> str:
+    if not player.inventory:
+        return choose_template(EMPTY_INVENTORY_TEMPLATES)
+    lines = ["🎒 背包"]
+    for inv in player.inventory:
+        item = cfg.items.get(inv.item_id)
+        tag = "(已装备)" if inv.equipped else ""
+        stats = _inventory_item_stats(item)
+        affix = format_affix(inv.affix)
+        affix_text = f" [{affix}]" if affix else ""
+        lines.append(
+            f"・{_item_name(cfg, inv.item_id)} ×{inv.quantity}{tag}"
+            f"{stats}{affix_text}"
+        )
+    return "\n".join(lines)
+
+
+render_inventory = _render_inventory_with_stats
 
 
 def _boss_value(boss, key: str):

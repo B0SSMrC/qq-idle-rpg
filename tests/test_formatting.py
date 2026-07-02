@@ -116,6 +116,27 @@ def test_render_inventory_lists_items_and_equipped():
     assert "3" in text           # 数量
 
 
+def test_render_inventory_shows_item_stats_for_gear_and_consumables():
+    p = _player()
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", quantity=1, equipped=True),
+        InventoryItem(item_id="cloth_armor", quantity=1),
+        InventoryItem(item_id="hp_potion", quantity=3),
+        InventoryItem(item_id="stamina_potion", quantity=2),
+        InventoryItem(item_id="atk_potion_minor", quantity=1),
+    ]
+
+    text = render_inventory(p, CFG)
+
+    assert "+5" in text
+    assert "+2" in text
+    assert "+20" in text
+    assert "40" in text
+    assert "50" in text
+    assert "10" in text
+    assert "4" in text
+
+
 def test_render_inventory_empty():
     p = _player()
     p.inventory = []
