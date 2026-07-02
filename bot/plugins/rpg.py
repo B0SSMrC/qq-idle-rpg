@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
 import bot.state as state
 from app import services
 from bot.command_parsing import parse_multi_item_quantities, parse_travel_explore_arg
+from bot.fuzzy_commands import parse_fuzzy_command
 from bot.formatting import (
     render_explore,
     render_status,
@@ -92,9 +93,7 @@ async def _guard(bot: Bot, event: Event, coro):
 cmd_register = on_command("注册", aliases={"创建"}, rule=to_me(), priority=10, block=True)
 
 
-@cmd_register.handle()
-async def handle_register(bot: Bot, event: Event):
-    name = _arg(event, "注册", "创建")
+async def _handle_register_name(bot: Bot, event: Event, name: str):
     if not name:
         await _reply(bot, event, "用法:注册 角色名(群里/频道里需 @机器人)")
         return
@@ -106,6 +105,11 @@ async def handle_register(bot: Bot, event: Event):
             await _reply_to(bot, event, p.name, "✅ 角色已创建!发「探索」开始冒险吧~")
 
     await _guard(bot, event, _do())
+
+
+@cmd_register.handle()
+async def handle_register(bot: Bot, event: Event):
+    await _handle_register_name(bot, event, _arg(event, "注册", "创建"))
 
 
 # ---------------------------------------------------------------------------
@@ -178,9 +182,7 @@ async def handle_inventory(bot: Bot, event: Event):
 cmd_equip = on_command("装备", rule=to_me(), priority=10, block=True)
 
 
-@cmd_equip.handle()
-async def handle_equip(bot: Bot, event: Event):
-    item_query = _arg(event, "装备")
+async def _handle_equip_item(bot: Bot, event: Event, item_query: str):
     if not item_query:
         await _reply(bot, event, "用法:装备 物品名")
         return
@@ -192,6 +194,11 @@ async def handle_equip(bot: Bot, event: Event):
             await _reply_to(bot, event, p.name, render_status(p, state.CFG))
 
     await _guard(bot, event, _do())
+
+
+@cmd_equip.handle()
+async def handle_equip(bot: Bot, event: Event):
+    await _handle_equip_item(bot, event, _arg(event, "装备"))
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +214,7 @@ cmd_buy_equip = on_command(
 )
 
 
-@cmd_buy_equip.handle()
-async def handle_buy_equip(bot: Bot, event: Event):
-    item_query = _arg(event, "购买装备", "购买武器", "购买并装备", "买装备", "买武器")
+async def _handle_buy_equip_item(bot: Bot, event: Event, item_query: str):
     if not item_query:
         await _reply(bot, event, "用法:购买装备 物品名")
         return
@@ -227,6 +232,13 @@ async def handle_buy_equip(bot: Bot, event: Event):
     await _guard(bot, event, _do())
 
 
+@cmd_buy_equip.handle()
+async def handle_buy_equip(bot: Bot, event: Event):
+    await _handle_buy_equip_item(
+        bot, event, _arg(event, "购买装备", "购买武器", "购买并装备", "买装备", "买武器")
+    )
+
+
 # ---------------------------------------------------------------------------
 # 卸下
 # ---------------------------------------------------------------------------
@@ -234,9 +246,7 @@ async def handle_buy_equip(bot: Bot, event: Event):
 cmd_unequip = on_command("卸下", rule=to_me(), priority=10, block=True)
 
 
-@cmd_unequip.handle()
-async def handle_unequip(bot: Bot, event: Event):
-    item_query = _arg(event, "卸下")
+async def _handle_unequip_item(bot: Bot, event: Event, item_query: str):
     if not item_query:
         await _reply(bot, event, "用法:卸下 物品名")
         return
@@ -250,6 +260,11 @@ async def handle_unequip(bot: Bot, event: Event):
     await _guard(bot, event, _do())
 
 
+@cmd_unequip.handle()
+async def handle_unequip(bot: Bot, event: Event):
+    await _handle_unequip_item(bot, event, _arg(event, "卸下"))
+
+
 # ---------------------------------------------------------------------------
 # 使用
 # ---------------------------------------------------------------------------
@@ -257,9 +272,7 @@ async def handle_unequip(bot: Bot, event: Event):
 cmd_use = on_command("使用", rule=to_me(), priority=10, block=True)
 
 
-@cmd_use.handle()
-async def handle_use(bot: Bot, event: Event):
-    item_arg = _arg(event, "使用")
+async def _handle_use_arg(bot: Bot, event: Event, item_arg: str):
     try:
         requests = parse_multi_item_quantities(item_arg)
     except ValueError as e:
@@ -294,6 +307,11 @@ async def handle_use(bot: Bot, event: Event):
             await _reply_to(bot, event, result.player.name, "\n".join(lines))
 
     await _guard(bot, event, _do())
+
+
+@cmd_use.handle()
+async def handle_use(bot: Bot, event: Event):
+    await _handle_use_arg(bot, event, _arg(event, "使用"))
 
 
 # ---------------------------------------------------------------------------
@@ -369,9 +387,7 @@ async def handle_refill_stamina(bot: Bot, event: Event):
 cmd_reforge = on_command("重铸", rule=to_me(), priority=10, block=True)
 
 
-@cmd_reforge.handle()
-async def handle_reforge(bot: Bot, event: Event):
-    arg = _arg(event, "重铸")
+async def _handle_reforge_arg(bot: Bot, event: Event, arg: str):
     parts = arg.split()
     if not parts:
         await _reply(bot, event, "用法:重铸 武器/装备 [次数]")
@@ -403,6 +419,11 @@ async def handle_reforge(bot: Bot, event: Event):
     await _guard(bot, event, _do())
 
 
+@cmd_reforge.handle()
+async def handle_reforge(bot: Bot, event: Event):
+    await _handle_reforge_arg(bot, event, _arg(event, "重铸"))
+
+
 # ---------------------------------------------------------------------------
 # 商店
 # ---------------------------------------------------------------------------
@@ -422,9 +443,7 @@ async def handle_shop(bot: Bot, event: Event):
 cmd_buy = on_command("购买", aliases={"买"}, rule=to_me(), priority=10, block=True)
 
 
-@cmd_buy.handle()
-async def handle_buy(bot: Bot, event: Event):
-    item_query = _arg(event, "购买", "买")
+async def _handle_buy_item(bot: Bot, event: Event, item_query: str):
     if not item_query:
         await _reply(bot, event, "用法:购买 物品名")
         return
@@ -439,6 +458,11 @@ async def handle_buy(bot: Bot, event: Event):
             )
 
     await _guard(bot, event, _do())
+
+
+@cmd_buy.handle()
+async def handle_buy(bot: Bot, event: Event):
+    await _handle_buy_item(bot, event, _arg(event, "购买", "买"))
 
 
 # ---------------------------------------------------------------------------
@@ -473,9 +497,7 @@ async def handle_sell_gear(bot: Bot, event: Event):
 cmd_travel = on_command("前往", aliases={"回层", "去"}, rule=to_me(), priority=10, block=True)
 
 
-@cmd_travel.handle()
-async def handle_travel(bot: Bot, event: Event):
-    depth_query = _arg(event, "前往", "回层", "去")
+async def _handle_travel_arg(bot: Bot, event: Event, depth_query: str):
     if not depth_query:
         await _reply(bot, event, "用法: 前往 层数，例如「前往 35」或「前往 最深」")
         return
@@ -489,6 +511,11 @@ async def handle_travel(bot: Bot, event: Event):
     await _guard(bot, event, _do())
 
 
+@cmd_travel.handle()
+async def handle_travel(bot: Bot, event: Event):
+    await _handle_travel_arg(bot, event, _arg(event, "前往", "回层", "去"))
+
+
 # ---------------------------------------------------------------------------
 # 回到并探索
 # ---------------------------------------------------------------------------
@@ -496,10 +523,9 @@ async def handle_travel(bot: Bot, event: Event):
 cmd_travel_explore = on_command("回到", rule=to_me(), priority=10, block=True)
 
 
-@cmd_travel_explore.handle()
-async def handle_travel_explore(bot: Bot, event: Event):
+async def _handle_travel_explore_arg(bot: Bot, event: Event, arg: str):
     try:
-        depth_query = parse_travel_explore_arg(_arg(event, "回到"))
+        depth_query = parse_travel_explore_arg(arg)
     except ValueError as e:
         await _reply(bot, event, str(e))
         return
@@ -515,6 +541,11 @@ async def handle_travel_explore(bot: Bot, event: Event):
     await _guard(bot, event, _do())
 
 
+@cmd_travel_explore.handle()
+async def handle_travel_explore(bot: Bot, event: Event):
+    await _handle_travel_explore_arg(bot, event, _arg(event, "回到"))
+
+
 # ---------------------------------------------------------------------------
 # 排行榜 / 排名
 # ---------------------------------------------------------------------------
@@ -522,9 +553,7 @@ async def handle_travel_explore(bot: Bot, event: Event):
 cmd_ranking = on_command("排行榜", aliases={"排名"}, rule=to_me(), priority=10, block=True)
 
 
-@cmd_ranking.handle()
-async def handle_ranking(bot: Bot, event: Event):
-    arg = _arg(event, "排行榜", "排名")
+async def _handle_ranking_arg(bot: Bot, event: Event, arg: str):
     key = "depth" if arg in ("深度", "depth") else "level"
     gid, uid = _scope(event)
 
@@ -534,6 +563,11 @@ async def handle_ranking(bot: Bot, event: Event):
             await _reply(bot, event, render_ranking(players, state.CFG, key))
 
     await _guard(bot, event, _do())
+
+
+@cmd_ranking.handle()
+async def handle_ranking(bot: Bot, event: Event):
+    await _handle_ranking_arg(bot, event, _arg(event, "排行榜", "排名"))
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +611,61 @@ cmd_help = on_command("帮助", aliases={"菜单", "?"}, rule=to_me(), priority=
 @cmd_help.handle()
 async def handle_help(bot: Bot, event: Event):
     await _reply(bot, event, _HELP_TEXT)
+
+
+# ---------------------------------------------------------------------------
+# 模糊指令兜底
+# ---------------------------------------------------------------------------
+
+cmd_fuzzy = on_message(rule=to_me(), priority=90, block=False)
+
+
+@cmd_fuzzy.handle()
+async def handle_fuzzy(bot: Bot, event: Event):
+    parsed = parse_fuzzy_command(event.get_plaintext())
+    if parsed is None:
+        return
+
+    if parsed.command == "register":
+        await _handle_register_name(bot, event, parsed.arg)
+    elif parsed.command == "explore":
+        await handle_explore(bot, event)
+    elif parsed.command == "status":
+        await handle_status(bot, event)
+    elif parsed.command == "inventory":
+        await handle_inventory(bot, event)
+    elif parsed.command == "equip":
+        await _handle_equip_item(bot, event, parsed.arg)
+    elif parsed.command == "buy_equip":
+        await _handle_buy_equip_item(bot, event, parsed.arg)
+    elif parsed.command == "unequip":
+        await _handle_unequip_item(bot, event, parsed.arg)
+    elif parsed.command == "use":
+        await _handle_use_arg(bot, event, parsed.arg)
+    elif parsed.command == "refill_hp":
+        await handle_refill_hp(bot, event)
+    elif parsed.command == "refill_stamina":
+        await handle_refill_stamina(bot, event)
+    elif parsed.command == "reforge":
+        await _handle_reforge_arg(bot, event, parsed.arg)
+    elif parsed.command == "shop":
+        await handle_shop(bot, event)
+    elif parsed.command == "buy":
+        await _handle_buy_item(bot, event, parsed.arg)
+    elif parsed.command == "sell_gear":
+        await handle_sell_gear(bot, event)
+    elif parsed.command == "travel":
+        await _handle_travel_arg(bot, event, parsed.arg)
+    elif parsed.command == "travel_explore":
+        await _handle_travel_explore_arg(bot, event, parsed.arg)
+    elif parsed.command == "ranking":
+        await _handle_ranking_arg(bot, event, parsed.arg)
+    elif parsed.command == "help":
+        await handle_help(bot, event)
+    else:
+        return
+
+    await cmd_fuzzy.finish()
 
 
 # ---------------------------------------------------------------------------
