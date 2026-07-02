@@ -152,6 +152,9 @@ def _dismantle_material_for_rarity(rarity: str) -> MaterialCost:
 def dismantle_unequipped_gear(
     player: Player, cfg: GameConfig, slot_filter: str = "all"
 ) -> DismantleResult:
+    if slot_filter not in {"all", *SUPPORTED_EQUIPMENT_SLOTS}:
+        raise GameError(f"涓嶆敮鎸佺殑瑁呭妲戒綅: {slot_filter}")
+
     kept: list[InventoryItem] = []
     granted: dict[str, int] = {}
     result = DismantleResult()

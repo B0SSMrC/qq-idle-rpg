@@ -109,3 +109,41 @@ Result:
 
 - `2 passed, 8 deselected`
 - `10 passed`
+
+## Review-fix addendum 2
+
+### RED
+
+Added a focused regression test in `tests/test_equipment_progression.py`:
+
+- `test_dismantle_rejects_unsupported_slot_filter`
+
+Ran:
+
+```bash
+pytest tests/test_equipment_progression.py -q
+```
+
+Observed failure before the fix:
+
+- `Failed: DID NOT RAISE GameError`
+- `dismantle_unequipped_gear(p, CFG, "accessory")` silently no-op'd instead of rejecting the unsupported filter
+
+### GREEN
+
+Updated `game_core/equipment_progression.py` to validate `slot_filter` before iterating inventory:
+
+- accepts exactly `all`, `weapon`, and `armor`
+- raises `GameError` for anything else
+
+Also cleaned up `tests/test_equipment_progression.py` so unsupported-slot tests use a local deep-copied config instead of mutating module-global `CFG.items`.
+
+Re-ran:
+
+```bash
+pytest tests/test_equipment_progression.py -q
+```
+
+Result:
+
+- `11 passed`

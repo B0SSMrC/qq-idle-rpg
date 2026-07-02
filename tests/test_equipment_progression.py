@@ -1,4 +1,5 @@
 from pathlib import Path
+from copy import deepcopy
 
 import pytest
 
@@ -23,6 +24,18 @@ def _player():
 
 def _mat_count(player, item_id):
     return sum(inv.quantity for inv in player.inventory if inv.item_id == item_id)
+
+
+def _cfg_with_accessory_item():
+    cfg = deepcopy(CFG)
+    cfg.items["test_accessory"] = cfg.items["iron_sword"].__class__(
+        id="test_accessory",
+        name="Test Accessory",
+        slot="accessory",
+        rarity="common",
+        price=1000,
+    )
+    return cfg
 
 
 def test_material_items_exist_in_config():
@@ -133,35 +146,35 @@ def test_enhance_rejects_missing_equipped_slot():
 
 def test_enhance_rejects_unsupported_slots():
     p = _player()
-    CFG.items["test_accessory"] = CFG.items["iron_sword"].__class__(
-        id="test_accessory",
-        name="Test Accessory",
-        slot="accessory",
-        rarity="common",
-        price=1000,
-    )
+    cfg = _cfg_with_accessory_item()
     p.inventory = [
         InventoryItem(item_id="test_accessory", equipped=True),
         InventoryItem(item_id="refined_iron", quantity=10),
     ]
 
     with pytest.raises(GameError):
-        enhance_equipped(p, CFG, "accessory")
+        enhance_equipped(p, cfg, "accessory")
 
 
 def test_star_up_rejects_unsupported_slots():
     p = _player()
-    CFG.items["test_accessory"] = CFG.items["iron_sword"].__class__(
-        id="test_accessory",
-        name="Test Accessory",
-        slot="accessory",
-        rarity="common",
-        price=1000,
-    )
+    cfg = _cfg_with_accessory_item()
     p.inventory = [
         InventoryItem(item_id="test_accessory", equipped=True),
         InventoryItem(item_id="test_accessory"),
     ]
 
     with pytest.raises(GameError):
-        star_up_equipped(p, CFG, "accessory")
+        star_up_equipped(p, cfg, "accessory")
+
+
+def test_dismantle_rejects_unsupported_slot_filter():
+    p = _player()
+    cfg = _cfg_with_accessory_item()
+    p.inventory = [
+        InventoryItem(item_id="test_accessory"),
+        InventoryItem(item_id="refined_iron", quantity=1),
+    ]
+
+    with pytest.raises(GameError):
+        dismantle_unequipped_gear(p, cfg, "accessory")
