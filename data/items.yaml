@@ -539,3 +539,21 @@
   buff_type: stamina
   buff_value: 50
   price: 80
+
+# ===== 材料 - 装备养成 =====
+- id: refined_iron
+  name: 精铁
+  slot: consumable
+  rarity: common
+- id: black_iron
+  name: 玄铁
+  slot: consumable
+  rarity: rare
+- id: star_meteorite
+  name: 星陨石
+  slot: consumable
+  rarity: legendary
+- id: divine_forge_crystal
+  name: 神锻晶
+  slot: consumable
+  rarity: divine
