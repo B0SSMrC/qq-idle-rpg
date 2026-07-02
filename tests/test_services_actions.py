@@ -10,7 +10,8 @@ from app.services import (
     register, do_explore, do_equip, do_use, do_buy,
     do_sell_unequipped_gear, do_travel_depth, do_travel_and_explore,
     do_refill_stamina, do_buy_and_equip, do_refill_hp, do_use_many,
-    do_reforge_equipped, get_ranking,
+    do_reforge_equipped, do_dismantle_gear, do_enhance_equipped,
+    do_star_up_equipped, get_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -318,6 +319,79 @@ def test_do_sell_unequipped_gear_persists_gold_and_inventory():
         ("fine_steel_sword", 1, True),
         ("hp_potion", 3, False),
     ]
+
+
+def test_do_dismantle_gear_persists_materials_and_keeps_equipped():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", quantity=2),
+        InventoryItem(item_id="fine_steel_sword", quantity=1, equipped=True),
+        InventoryItem(item_id="hp_potion", quantity=3),
+    ]
+    repo.save_player(conn, p)
+
+    result, changed = do_dismantle_gear(conn, CFG, "g", "u")
+
+    assert result.dismantled_count == 2
+    assert changed.inventory[0].item_id == "fine_steel_sword"
+    reloaded = repo.get_player(conn, "g", "u")
+    assert any(i.item_id == "fine_steel_sword" and i.equipped for i in reloaded.inventory)
+    assert any(i.item_id == "hp_potion" and i.quantity == 3 for i in reloaded.inventory)
+    assert sum(i.quantity for i in reloaded.inventory if i.item_id == "refined_iron") == 2
+    assert all(
+        i.item_id != "iron_sword"
+        for i in reloaded.inventory
+        if not i.equipped
+    )
+
+
+def test_do_enhance_equipped_persists_level_and_spends_resources():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.gold = 100000
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", equipped=True),
+        InventoryItem(item_id="refined_iron", quantity=5),
+    ]
+    repo.save_player(conn, p)
+
+    result = do_enhance_equipped(conn, CFG, "g", "u", "weapon", times=2, now=123)
+
+    assert result.success_count == 2
+    assert result.gold_spent > 0
+    reloaded = repo.get_player(conn, "g", "u")
+    sword = next(i for i in reloaded.inventory if i.item_id == "iron_sword")
+    assert sword.enhance_level == 2
+    assert reloaded.gold == 100000 - result.gold_spent
+    assert sum(i.quantity for i in reloaded.inventory if i.item_id == "refined_iron") == 3
+    assert reloaded.last_active_at == 123
+
+
+def test_do_star_up_equipped_persists_star_and_consumes_duplicate():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.gold = 100000
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", equipped=True),
+        InventoryItem(item_id="iron_sword"),
+    ]
+    repo.save_player(conn, p)
+
+    result = do_star_up_equipped(conn, CFG, "g", "u", "weapon", now=456)
+
+    assert result.new_star_level == 1
+    assert result.duplicate_spent == 1
+    reloaded = repo.get_player(conn, "g", "u")
+    swords = [i for i in reloaded.inventory if i.item_id == "iron_sword"]
+    assert len(swords) == 1
+    assert swords[0].equipped
+    assert swords[0].star_level == 1
+    assert reloaded.gold == 100000 - result.gold_spent
+    assert reloaded.last_active_at == 456
 
 
 def test_do_travel_depth_persists_allowed_depth():

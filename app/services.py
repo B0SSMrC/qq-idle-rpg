@@ -178,6 +178,11 @@ from game_core.void_sacrifice import (
     parse_draw_count,
     roll_void_sacrifice,
 )
+from game_core.equipment_progression import (
+    dismantle_unequipped_gear as _dismantle_unequipped_gear,
+    enhance_equipped as _enhance_equipped,
+    star_up_equipped as _star_up_equipped,
+)
 
 
 def do_explore(conn, cfg, group_id, user_id, now, rng) -> ExploreResult:
@@ -299,13 +304,17 @@ def do_use(conn, cfg, group_id, user_id, item_query, quantity=1, now=None) -> Pl
     return p
 
 
-def _parse_gear_slot(slot_query: str) -> str:
+def _parse_gear_slot(
+    slot_query: str,
+    *,
+    usage: str = "用法:重铸 武器/装备 [次数]",
+) -> str:
     text = str(slot_query).strip()
     if text in {"武器", "weapon"}:
         return "weapon"
     if text in {"装备", "防具", "armor"}:
         return "armor"
-    raise GameError("用法:重铸 武器/装备 [次数]")
+    raise GameError(usage)
 
 
 def do_reforge_equipped(conn, cfg, group_id, user_id, slot_query, times, rng) -> ReforgeResult:
@@ -462,6 +471,35 @@ def do_sell_unequipped_gear(conn, cfg, group_id, user_id):
     result = _loot.sell_unequipped_gear(p, cfg)
     repo.save_player(conn, p)
     return result, p
+
+
+def do_dismantle_gear(conn, cfg, group_id, user_id, slot_filter="all"):
+    p = _require(conn, cfg, group_id, user_id)
+    result = _dismantle_unequipped_gear(p, cfg, slot_filter)
+    if result.dismantled_count <= 0:
+        raise GameError("没有可分解的未装备武器或防具")
+    repo.save_player(conn, p)
+    return result, p
+
+
+def do_enhance_equipped(conn, cfg, group_id, user_id, slot_query, times=1, now=None):
+    p = _require(conn, cfg, group_id, user_id)
+    slot = _parse_gear_slot(slot_query, usage="用法:强化 武器/装备 [次数]")
+    result = _enhance_equipped(p, cfg, slot, max(1, int(times)))
+    if now is not None:
+        p.last_active_at = now
+    repo.save_player(conn, p)
+    return result
+
+
+def do_star_up_equipped(conn, cfg, group_id, user_id, slot_query, now=None):
+    p = _require(conn, cfg, group_id, user_id)
+    slot = _parse_gear_slot(slot_query, usage="用法:升星 武器/装备")
+    result = _star_up_equipped(p, cfg, slot)
+    if now is not None:
+        p.last_active_at = now
+    repo.save_player(conn, p)
+    return result
 
 
 def do_travel_depth(conn, cfg, group_id, user_id, depth_query) -> Player:
