@@ -24,6 +24,17 @@ def _item_name(cfg: GameConfig, item_id: str) -> str:
     return it.name if it else item_id
 
 
+def _gear_base_stats(it) -> str:
+    parts = []
+    if it.atk:
+        parts.append(f"⚔️{it.atk:+d}")
+    if it.defense:
+        parts.append(f"🛡️{it.defense:+d}")
+    if it.hp:
+        parts.append(f"❤️{it.hp:+d}")
+    return f"({' '.join(parts)})" if parts else ""
+
+
 def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
     lines = [f"🗡️ 【{player.name}】的下潜 (第{res.depth_before}层 → 第{res.depth_after}层)", ""]
     for s in res.steps:
@@ -63,8 +74,14 @@ def render_status(player: Player, cfg: GameConfig) -> str:
     equipped = []
     for i in player.inventory:
         if i.equipped:
+            item = cfg.items.get(i.item_id)
+            stats = _gear_base_stats(item) if item else ""
             affix = format_affix(i.affix)
-            equipped.append(_item_name(cfg, i.item_id) + (f"[{affix}]" if affix else ""))
+            equipped.append(
+                _item_name(cfg, i.item_id)
+                + stats
+                + (f"[{affix}]" if affix else "")
+            )
     lines = [
         f"🛡️ {player.name}  Lv.{player.level}  (当前世界)",
         f"经验 {player.exp}",

@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS inventory (
     item_id     TEXT NOT NULL,
     quantity    INTEGER NOT NULL DEFAULT 1,
     equipped    INTEGER NOT NULL DEFAULT 0,
-    affix       TEXT NOT NULL DEFAULT ''
+    affix       TEXT NOT NULL DEFAULT '',
+    source      TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory(player_id);
@@ -187,6 +188,8 @@ def _ensure_inventory_columns(conn: sqlite3.Connection) -> None:
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(inventory)")}
     if "affix" not in cols:
         conn.execute("ALTER TABLE inventory ADD COLUMN affix TEXT NOT NULL DEFAULT ''")
+    if "source" not in cols:
+        conn.execute("ALTER TABLE inventory ADD COLUMN source TEXT NOT NULL DEFAULT ''")
 
 
 def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = False) -> None:

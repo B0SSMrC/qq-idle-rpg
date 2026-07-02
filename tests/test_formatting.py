@@ -58,6 +58,20 @@ def test_render_status_contains_stats():
     assert "312" in text         # 金币
 
 
+def test_render_status_shows_equipped_item_base_stats():
+    p = _player()
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", equipped=True),
+        InventoryItem(item_id="cloth_armor", equipped=True),
+    ]
+
+    text = render_status(p, CFG)
+
+    assert "+5" in text
+    assert "+2" in text
+    assert "+20" in text
+
+
 def test_render_status_shows_overdrive_penalty():
     p = _player()
     p.last_active_at = 1000

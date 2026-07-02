@@ -94,6 +94,7 @@ class InventoryItem:
     quantity: int = 1
     equipped: bool = False
     affix: str = ""
+    source: str = ""
 
 
 @dataclass

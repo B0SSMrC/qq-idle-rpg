@@ -74,6 +74,20 @@ def test_save_inventory_no_duplicates_on_resave():
     assert len(pots) == 1
 
 
+def test_save_and_load_inventory_source():
+    conn = _conn()
+    p = create_player(conn, _player())
+    p.inventory.append(InventoryItem(
+        item_id="iron_sword",
+        quantity=1,
+        source="void_sacrifice",
+    ))
+    save_player(conn, p)
+
+    loaded = get_player(conn, "g", "u")
+    assert loaded.inventory[0].source == "void_sacrifice"
+
+
 def test_list_group_players_is_group_scoped():
     conn = _conn()
     create_player(conn, _player(group="g1", user="a", name="A"))

@@ -196,3 +196,18 @@ def test_sell_unequipped_gear_prices_legendary_armor_from_lower_armor():
     assert p.gold == 17024
     assert p.inventory == []
     assert result.sold_items[0].unit_price == 17024
+
+
+def test_sell_unequipped_void_sacrifice_gear_is_capped_below_ten_draw_cost():
+    p = _player()
+    p.inventory = [
+        InventoryItem(item_id="diamond_body_armor", quantity=1, source="void_sacrifice")
+        for _ in range(10)
+    ]
+
+    result = sell_unequipped_gear(p, CFG)
+
+    assert result.total_gold == 8000
+    assert p.gold == 8000
+    assert p.inventory == []
+    assert {sold.unit_price for sold in result.sold_items} == {800}

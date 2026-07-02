@@ -8,6 +8,9 @@ from game_core.errors import GameError, ItemNotFound, InvalidSlot
 from game_core.stats import hp_max
 from game_core.affixes import roll_affix
 
+VOID_SACRIFICE_GEAR_SOURCE = "void_sacrifice"
+VOID_SACRIFICE_GEAR_SALE_UNIT_CAP = 800
+
 
 def roll_drops(monster: MonsterDef, rng: random.Random) -> list[str]:
     return [d.item for d in monster.drops if rng.random() < d.chance]
@@ -21,7 +24,8 @@ def _find(player: Player, item_id: str) -> InventoryItem | None:
 
 
 def add_item(player: Player, item_id: str, qty: int = 1,
-             cfg: GameConfig | None = None, rng: random.Random | None = None) -> InventoryItem:
+             cfg: GameConfig | None = None, rng: random.Random | None = None,
+             source: str = "") -> InventoryItem:
     item = cfg.items.get(item_id) if cfg else None
     if item and item.slot in ("weapon", "armor"):
         added = None
@@ -30,6 +34,7 @@ def add_item(player: Player, item_id: str, qty: int = 1,
                 item_id=item_id,
                 quantity=1,
                 affix=roll_affix(item.slot, rng),
+                source=source,
             )
             player.inventory.append(added)
         return added
@@ -38,7 +43,7 @@ def add_item(player: Player, item_id: str, qty: int = 1,
         existing.quantity += qty
         return existing
     else:
-        added = InventoryItem(item_id=item_id, quantity=qty)
+        added = InventoryItem(item_id=item_id, quantity=qty, source=source)
         player.inventory.append(added)
         return added
 
@@ -124,9 +129,13 @@ def _lower_priced_gear(item: ItemDef, cfg: GameConfig) -> ItemDef | None:
     return max(candidates, key=lambda other: (_primary_gear_stat(other), other.price or 0))
 
 
-def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig) -> int | None:
+def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig,
+                          source: str = "") -> int | None:
     if item.price is not None:
-        return max(1, int(item.price * 0.8))
+        price = max(1, int(item.price * 0.8))
+        if source == VOID_SACRIFICE_GEAR_SOURCE:
+            return min(price, VOID_SACRIFICE_GEAR_SALE_UNIT_CAP)
+        return price
 
     lower = _lower_priced_gear(item, cfg)
     if lower is None or lower.price is None:
@@ -142,7 +151,10 @@ def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig) -> int | None:
         raw_price = item.defense / lower_stat * 3.5 * lower.price
     else:
         return None
-    return max(1, int(raw_price))
+    price = max(1, int(raw_price))
+    if source == VOID_SACRIFICE_GEAR_SOURCE:
+        return min(price, VOID_SACRIFICE_GEAR_SALE_UNIT_CAP)
+    return price
 
 
 def reroll_affix(player: Player, cfg: GameConfig, slot: str,
@@ -167,7 +179,7 @@ def sell_unequipped_gear(player: Player, cfg: GameConfig) -> SellResult:
             kept_inventory.append(inv)
             continue
 
-        unit_price = _gear_sale_unit_price(item, cfg)
+        unit_price = _gear_sale_unit_price(item, cfg, inv.source)
         if unit_price is None or inv.quantity <= 0:
             kept_inventory.append(inv)
             continue

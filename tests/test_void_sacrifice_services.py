@@ -132,12 +132,12 @@ def test_do_void_sacrifice_persists_common_consumable_reward(monkeypatch):
 def test_do_void_sacrifice_persists_gear_reward_via_loot_path_with_affix(monkeypatch):
     conn = _conn()
     _player(conn, gold=20000)
-    add_item_calls: list[tuple[str, int]] = []
+    add_item_calls: list[tuple[str, int, str]] = []
     real_add_item = services._loot.add_item
 
-    def tracking_add_item(player, item_id, qty=1, cfg=None, rng=None):
-        add_item_calls.append((item_id, qty))
-        return real_add_item(player, item_id, qty=qty, cfg=cfg, rng=rng)
+    def tracking_add_item(player, item_id, qty=1, cfg=None, rng=None, source=""):
+        add_item_calls.append((item_id, qty, source))
+        return real_add_item(player, item_id, qty=qty, cfg=cfg, rng=rng, source=source)
 
     monkeypatch.setattr(
         services,
@@ -153,10 +153,11 @@ def test_do_void_sacrifice_persists_gear_reward_via_loot_path_with_affix(monkeyp
 
     reloaded = repo.get_player(conn, "g", "u")
     swords = [item for item in reloaded.inventory if item.item_id == "iron_sword"]
-    assert add_item_calls == [("iron_sword", 1)]
+    assert add_item_calls == [("iron_sword", 1, "void_sacrifice")]
     assert len(swords) == 1
     assert swords[0].quantity == 1
     assert swords[0].affix
+    assert swords[0].source == "void_sacrifice"
 
 
 def test_do_void_sacrifice_deducts_gold_before_rolling_rewards(monkeypatch):

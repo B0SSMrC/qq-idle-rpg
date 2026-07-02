@@ -213,7 +213,13 @@ def do_void_sacrifice(conn, cfg, group_id, user_id, draw_count, now, rng) -> Voi
             if draw.consumable_id:
                 _loot.add_item(fresh_player, draw.consumable_id, cfg=cfg, rng=rng)
             if draw.item_id:
-                _loot.add_item(fresh_player, draw.item_id, cfg=cfg, rng=rng)
+                _loot.add_item(
+                    fresh_player,
+                    draw.item_id,
+                    cfg=cfg,
+                    rng=rng,
+                    source=_loot.VOID_SACRIFICE_GEAR_SOURCE,
+                )
         fresh_player.last_active_at = now
 
         repo.save_player(conn, fresh_player, commit=False)
