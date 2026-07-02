@@ -154,6 +154,37 @@ def test_render_void_sacrifice_lists_rewards_and_pity():
     assert "距 divine 保底:110抽" in text
 
 
+def test_render_void_sacrifice_uses_distinct_affixes_for_duplicate_gear():
+    player = Player(group_id="g", user_id="u", name="cxh", gold=9000)
+    player.inventory = [
+        InventoryItem(
+            item_id="thunder_plate",
+            affix='{"name":"first","effects":{"hp_pct":0.14}}',
+        ),
+        InventoryItem(
+            item_id="thunder_plate",
+            affix='{"name":"second","effects":{"def_pct":0.09,"hp_pct":0.11}}',
+        ),
+    ]
+    result = VoidSacrificeResult(
+        player=player,
+        draw_count=2,
+        cost=2000,
+        draws=[
+            VoidSacrificeDraw(rarity="epic", item_id="thunder_plate"),
+            VoidSacrificeDraw(rarity="epic", item_id="thunder_plate"),
+        ],
+        pity=VoidSacrificePity(
+            total_draws=2, draws_since_mythic_plus=2, draws_since_divine=2
+        ),
+    )
+
+    text = render_void_sacrifice(result, CFG)
+
+    assert "first(" in text
+    assert "second(" in text
+
+
 def test_render_world_boss_status_lists_hp_and_damage():
     boss = {
         "name": "万劫魔君",

@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from collections import defaultdict, deque
 import random
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
@@ -100,6 +102,10 @@ def render_sell_result(result: SellResult, gold_after: int) -> str:
 
 
 def render_void_sacrifice(result, cfg: GameConfig) -> str:
+    inventory_by_item_id = defaultdict(deque)
+    for inv in result.player.inventory:
+        inventory_by_item_id[inv.item_id].append(inv)
+
     lines = [
         f"🌌 虚空献祭 ×{result.draw_count}",
         f"消耗金币:{result.cost}",
@@ -109,10 +115,9 @@ def render_void_sacrifice(result, cfg: GameConfig) -> str:
         if draw.item_id:
             item_name = _item_name(cfg, draw.item_id)
             affix = ""
-            for inv in reversed(result.player.inventory):
-                if inv.item_id == draw.item_id:
-                    affix = format_affix(inv.affix)
-                    break
+            matching_items = inventory_by_item_id[draw.item_id]
+            if matching_items:
+                affix = format_affix(matching_items.popleft().affix)
             affix_text = f"[{affix}]" if affix else ""
             lines.append(f"{index}. {item_name}{affix_text}  {draw.rarity}")
         elif draw.consumable_id:
