@@ -90,6 +90,20 @@ def test_ten_draw_guarantees_epic_plus_when_all_rolls_are_low(monkeypatch):
     assert roll.draws[-1].guaranteed is True
 
 
+def test_ten_draw_void_sacrifice_can_return_upgrade_materials():
+    seen_material = False
+    for seed in range(100):
+        roll = roll_void_sacrifice(10, CFG, random.Random(seed), VoidSacrificePity())
+        if any(
+            draw.consumable_id in {"black_iron", "star_meteorite"}
+            for draw in roll.draws
+        ):
+            seen_material = True
+            break
+
+    assert seen_material
+
+
 def test_mythic_pity_forces_mythic_and_resets_mythic_counter():
     pity = VoidSacrificePity(
         total_draws=50,

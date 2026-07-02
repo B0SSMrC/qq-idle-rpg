@@ -84,6 +84,26 @@ def test_roll_world_boss_rewards_scales_gold_with_damage_percent():
     assert len(high.consumables) >= 1
 
 
+def test_world_boss_rewards_can_include_upgrade_materials():
+    seen_material = False
+    for seed in range(100):
+        reward = roll_world_boss_rewards(
+            0.5,
+            player_level=30,
+            active_player_count=3,
+            cfg=CFG,
+            rng=random.Random(seed),
+        )
+        if any(
+            item_id in {"star_meteorite", "divine_forge_crystal"}
+            for item_id, _ in reward.consumables
+        ):
+            seen_material = True
+            break
+
+    assert seen_material
+
+
 def _current_cxh_player():
     player = Player(
         group_id="g",

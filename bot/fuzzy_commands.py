@@ -74,6 +74,12 @@ _RULES: tuple[_AliasRule, ...] = (
     _AliasRule("refill_stamina", "回满体力", no_arg_only=True, fuzzy=False),
     _AliasRule("refill_stamina", "补满体力", no_arg_only=True, fuzzy=False),
     _AliasRule("reforge", "重铸", requires_arg=True, fuzzy=False),
+    _AliasRule("dismantle_gear", "一键分解装备", no_arg_only=True, fuzzy=False, fixed_arg="all"),
+    _AliasRule("dismantle_gear", "分解装备", no_arg_only=True, fuzzy=False, fixed_arg="all"),
+    _AliasRule("dismantle_gear", "分解武器", no_arg_only=True, fuzzy=False, fixed_arg="weapon"),
+    _AliasRule("dismantle_gear", "分解防具", no_arg_only=True, fuzzy=False, fixed_arg="armor"),
+    _AliasRule("enhance_gear", "强化", requires_arg=True, fuzzy=False),
+    _AliasRule("star_up_gear", "升星", requires_arg=True, fuzzy=False),
     _AliasRule("shop", "看商店", no_arg_only=True),
     _AliasRule("shop", "打开商店", no_arg_only=True),
     _AliasRule("shop", "查看商店", no_arg_only=True),
@@ -212,7 +218,7 @@ def _is_allowed_arg(
     if rule.alias in {"买", "去", "回", "用"} and arg.startswith("不"):
         return False
 
-    if rule.command == "reforge" and not arg.startswith(
+    if rule.command in {"reforge", "enhance_gear", "star_up_gear"} and not arg.startswith(
         ("武器", "装备", "防具", "weapon", "armor")
     ):
         return False
@@ -232,7 +238,7 @@ def _normalize(raw: str) -> str:
 
 def _normalize_arg(command: str, arg: str) -> str:
     arg = _SPACE_RE.sub(" ", arg.strip())
-    if command in {"reforge", "use"}:
+    if command in {"reforge", "use", "enhance_gear"}:
         match = _TRAILING_NUMBER_RE.match(arg)
         if match:
             arg = f"{match.group(1).strip()} {match.group(2)}"

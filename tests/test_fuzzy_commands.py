@@ -152,3 +152,18 @@ def test_fuzzy_void_sacrifice_aliases():
     assert parse_fuzzy_command("献祭").command == "void_sacrifice"
     assert parse_fuzzy_command("虚空献祭10").arg == "10"
     assert parse_fuzzy_command("十连献祭").arg == "10"
+
+
+def test_equipment_progression_commands_are_supported():
+    assert_parsed("分解装备", "dismantle_gear", "all")
+    assert_parsed("一键分解装备", "dismantle_gear", "all")
+    assert_parsed("分解武器", "dismantle_gear", "weapon")
+    assert_parsed("分解防具", "dismantle_gear", "armor")
+    assert_parsed("强化 武器 10", "enhance_gear", "武器 10")
+    assert_parsed("强化武器10", "enhance_gear", "武器 10")
+    assert_parsed("升星 装备", "star_up_gear", "装备")
+
+
+def test_spend_progression_commands_require_explicit_action_words():
+    assert parse_fuzzy_command("武器强化好吗") is None
+    assert parse_fuzzy_command("装备升星材料在哪") is None

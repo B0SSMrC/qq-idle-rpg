@@ -4,11 +4,19 @@ from game_core.models import (
     Player, InventoryItem, ExploreResult, StepLog, SellResult, SoldItem,
 )
 from game_core.void_sacrifice import VoidSacrificeDraw, VoidSacrificePity
+from game_core.equipment_progression import (
+    DismantledGear,
+    DismantleResult,
+    EnhanceResult,
+    MaterialCost,
+    StarUpResult,
+)
 from game_core.stats import hp_max
 from bot.formatting import (
     render_explore, render_status, render_ranking, render_shop, render_inventory,
     render_sell_result, render_void_sacrifice, render_world_boss_status,
-    render_world_boss_attack,
+    render_world_boss_attack, render_dismantle_result, render_enhance_result,
+    render_star_up_result,
 )
 from app.services import (
     VoidSacrificeResult, WorldBossAttackResult, WorldBossDamageEntry,
@@ -72,6 +80,18 @@ def test_render_status_shows_equipped_item_base_stats():
     assert "+20" in text
 
 
+def test_render_status_shows_equipment_growth_labels():
+    p = _player()
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", equipped=True, enhance_level=3, star_level=1),
+    ]
+
+    text = render_status(p, CFG)
+
+    assert "+3" in text
+    assert "\u26051" in text
+
+
 def test_render_status_shows_overdrive_penalty():
     p = _player()
     p.last_active_at = 1000
@@ -113,6 +133,7 @@ def test_render_inventory_lists_items_and_equipped():
     assert "铁剑" in text
     assert "已装备" in text
     assert "金疮药" in text
+    assert "×3" in text
     assert "3" in text           # 数量
 
 
@@ -143,6 +164,16 @@ def test_render_inventory_empty():
     assert "空" in render_inventory(p, CFG)
 
 
+def test_render_inventory_shows_material_description():
+    p = _player()
+    p.inventory = [InventoryItem(item_id="refined_iron", quantity=12)]
+
+    text = render_inventory(p, CFG)
+
+    assert CFG.items["refined_iron"].name in text
+    assert "\u6750\u6599" in text
+
+
 def test_render_sell_result_lists_total_and_items():
     result = SellResult(sold_items=[
         SoldItem(item_id="iron_sword", name="Iron Sword", quantity=2,
@@ -158,6 +189,55 @@ def test_render_sell_result_lists_total_and_items():
 def test_render_sell_result_empty():
     text = render_sell_result(SellResult(), gold_after=312)
     assert "312" in text
+
+
+def test_render_dismantle_result_lists_materials():
+    result = DismantleResult(
+        dismantled=[
+            DismantledGear(
+                item_id="iron_sword",
+                name="铁剑",
+                quantity=2,
+                materials=[MaterialCost("refined_iron", 2)],
+            )
+        ],
+        materials={"refined_iron": 2},
+    )
+
+    text = render_dismantle_result(result, CFG)
+
+    assert "分解完成" in text
+    assert "铁剑" in text
+    assert CFG.items["refined_iron"].name in text
+
+
+def test_render_enhance_and_star_up_results():
+    enhance = EnhanceResult(
+        item_name="铁剑",
+        slot="weapon",
+        old_level=1,
+        new_level=3,
+        requested=2,
+        success_count=2,
+        gold_spent=100,
+        materials_spent={"refined_iron": 2},
+    )
+    star = StarUpResult(
+        item_name="铁剑",
+        slot="weapon",
+        old_star_level=0,
+        new_star_level=1,
+        gold_spent=2000,
+        duplicate_spent=1,
+    )
+
+    enhance_text = render_enhance_result(enhance, CFG)
+    star_text = render_star_up_result(star, CFG)
+
+    assert "强化结算" in enhance_text
+    assert "+1 -> +3" in enhance_text
+    assert "升星成功" in star_text
+    assert "★0 -> ★1" in star_text
 
 
 def test_render_void_sacrifice_lists_rewards_and_pity():

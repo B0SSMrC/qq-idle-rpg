@@ -81,6 +81,9 @@ COMMON_CONSUMABLE_POOL = [
     "atk_potion_major",
     "def_potion_major",
     "stamina_potion",
+    "refined_iron",
+    "black_iron",
+    "star_meteorite",
 ]
 
 
