@@ -93,6 +93,24 @@ def test_equipped_affixes_modify_stats():
     assert hp_max(p, CFG) == int((120 + 35) * 1.1)
 
 
+def test_equipment_growth_increases_player_stats_before_affixes():
+    p = _player(level=1)
+    p.inventory = [
+        InventoryItem(
+            item_id="iron_sword",
+            equipped=True,
+            enhance_level=5,
+            star_level=1,
+            affix='{"name":"閿嬮攼","effects":{"atk_pct":0.2}}',
+        ),
+        InventoryItem(item_id="cloth_armor", equipped=True, enhance_level=5),
+    ]
+
+    assert attack(p, CFG) > 12 + CFG.items["iron_sword"].atk
+    assert defense(p, CFG) > 7 + CFG.items["cloth_armor"].defense
+    assert hp_max(p, CFG) > 120 + CFG.items["cloth_armor"].hp
+
+
 def test_lifesteal_reads_weapon_affix():
     p = _player(level=1, inv=[
         InventoryItem(

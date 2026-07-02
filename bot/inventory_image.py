@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from game_core.affixes import format_affix
+from game_core.equipment_progression import MATERIAL_ITEM_IDS, gear_growth_stats
 from game_core.models import GameConfig, InventoryItem, ItemDef, Player
 
 
@@ -135,32 +136,47 @@ def cleanup_inventory_images(
 
 
 def _row_for_item(inv: InventoryItem, item: ItemDef) -> InventoryImageRow:
+    name = item.name
+    if item.slot in ("weapon", "armor"):
+        labels = []
+        if inv.enhance_level:
+            labels.append(f"+{inv.enhance_level}")
+        if inv.star_level:
+            labels.append(f"\u2605{inv.star_level}")
+        if labels:
+            name = f"{name} {' '.join(labels)}"
     return InventoryImageRow(
-        name=item.name,
+        name=name,
         quantity=f"x{inv.quantity}",
         status="Equipped" if inv.equipped else "",
-        stats=_item_stats(item),
+        stats=_item_stats(inv, item),
         affix=format_affix(inv.affix),
         price=str(item.price) if item.price is not None else "-",
     )
 
 
-def _item_stats(item: ItemDef) -> str:
+def _item_stats(inv: InventoryItem, item: ItemDef) -> str:
+    if item.slot in ("weapon", "armor"):
+        atk, defense_value, hp_value = gear_growth_stats(inv, item)
+    else:
+        atk, defense_value, hp_value = item.atk, item.defense, item.hp
     parts: list[str] = []
-    if item.atk:
-        parts.append(f"攻击 {item.atk:+d}")
-    if item.defense:
-        parts.append(f"防御 {item.defense:+d}")
-    if item.hp:
-        parts.append(f"生命 {item.hp:+d}")
+    if atk:
+        parts.append(f"\u653b\u51fb {atk:+d}")
+    if defense_value:
+        parts.append(f"\u9632\u5fa1 {defense_value:+d}")
+    if hp_value:
+        parts.append(f"\u751f\u547d {hp_value:+d}")
+    if item.id in MATERIAL_ITEM_IDS:
+        parts.append("\u6750\u6599")
     if item.heal:
-        parts.append(f"回复 {item.heal}")
+        parts.append(f"\u56de\u590d {item.heal}")
     if item.buff_type == "atk":
-        parts.append(f"攻击 +{item.buff_value}/{item.buff_steps}步")
+        parts.append(f"\u653b\u51fb +{item.buff_value}/{item.buff_steps}\u6b65")
     elif item.buff_type == "def":
-        parts.append(f"防御 +{item.buff_value}/{item.buff_steps}步")
+        parts.append(f"\u9632\u5fa1 +{item.buff_value}/{item.buff_steps}\u6b65")
     elif item.buff_type == "stamina":
-        parts.append(f"体力 +{item.buff_value}")
+        parts.append(f"\u4f53\u529b +{item.buff_value}")
     return "  ".join(parts) if parts else "-"
 
 

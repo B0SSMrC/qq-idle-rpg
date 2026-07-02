@@ -44,6 +44,23 @@ def test_summarize_inventory_sections_groups_items_by_slot():
     assert "40" in by_title["Consumables"].rows[0].stats
 
 
+def test_inventory_image_rows_show_equipment_growth_and_materials():
+    player = _player_with_inventory(
+        [
+            InventoryItem(item_id="iron_sword", equipped=True, enhance_level=3, star_level=1),
+            InventoryItem(item_id="refined_iron", quantity=5),
+        ]
+    )
+
+    sections = summarize_inventory_sections(player, CFG)
+    weapon = next(section for section in sections if section.title == "Weapons").rows[0]
+    consumable = next(section for section in sections if section.title == "Consumables").rows[0]
+
+    assert "+3" in weapon.name
+    assert "\u26051" in weapon.name
+    assert "\u6750\u6599" in consumable.stats
+
+
 def test_render_inventory_images_writes_png_file(tmp_path):
     player = _player_with_inventory(
         [

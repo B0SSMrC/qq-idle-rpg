@@ -4,6 +4,7 @@ from collections import Counter, defaultdict, deque
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
 from game_core.affixes import format_affix
+from game_core.equipment_progression import MATERIAL_ITEM_IDS, gear_growth_stats
 from game_core.void_sacrifice import (
     remaining_divine_pity,
     remaining_mythic_plus_pity,
@@ -41,6 +42,34 @@ def _gear_base_stats(it) -> str:
     if it.hp:
         parts.append(f"❤️{it.hp:+d}")
     return f"({' '.join(parts)})" if parts else ""
+
+
+def _gear_growth_label(inv) -> str:
+    parts = []
+    if getattr(inv, "enhance_level", 0) > 0:
+        parts.append(f"+{inv.enhance_level}")
+    if getattr(inv, "star_level", 0) > 0:
+        parts.append(f"\u2605{inv.star_level}")
+    return " ".join(parts)
+
+
+def _gear_stats_for_inventory(inv, item) -> str:
+    if item is None:
+        return ""
+    if item.slot in ("weapon", "armor"):
+        atk, defense_value, hp_value = gear_growth_stats(inv, item)
+        parts = []
+        if atk:
+            parts.append(f"\u2694\ufe0f{atk:+d}")
+        if defense_value:
+            parts.append(f"\U0001f6e1\ufe0f{defense_value:+d}")
+        if hp_value:
+            parts.append(f"\u2764\ufe0f{hp_value:+d}")
+        return f"({' '.join(parts)})" if parts else ""
+    if item.id in MATERIAL_ITEM_IDS:
+        return "(\u6750\u6599)"
+    stats = _shop_stats(item)
+    return f"({stats})" if stats else ""
 
 
 def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
@@ -101,10 +130,12 @@ def render_status(player: Player, cfg: GameConfig) -> str:
     for i in player.inventory:
         if i.equipped:
             item = cfg.items.get(i.item_id)
-            stats = _gear_base_stats(item) if item else ""
+            stats = _gear_stats_for_inventory(i, item)
+            label = _gear_growth_label(i)
             affix = format_affix(i.affix)
             equipped.append(
                 _item_name(cfg, i.item_id)
+                + (f" {label}" if label else "")
                 + stats
                 + (f"[{affix}]" if affix else "")
             )
@@ -235,15 +266,6 @@ def _shop_stats(it) -> str:
     return " ".join(parts)
 
 
-def _inventory_item_stats(it) -> str:
-    if it is None:
-        return ""
-    if it.slot in ("weapon", "armor"):
-        return _gear_base_stats(it)
-    stats = _shop_stats(it)
-    return f"({stats})" if stats else ""
-
-
 def render_shop(cfg: GameConfig) -> str:
     from game_core.shop import list_shop
     groups = {
@@ -276,33 +298,25 @@ def render_shop(cfg: GameConfig) -> str:
 def render_inventory(player: Player, cfg: GameConfig) -> str:
     if not player.inventory:
         return choose_template(EMPTY_INVENTORY_TEMPLATES)
-    lines = ["🎒 背包"]
-    for it in player.inventory:
-        tag = "(已装备)" if it.equipped else ""
-        affix = format_affix(it.affix)
-        affix_text = f" [{affix}]" if affix else ""
-        lines.append(f"・{_item_name(cfg, it.item_id)} ×{it.quantity}{tag}{affix_text}")
-    return "\n".join(lines)
-
-
-def _render_inventory_with_stats(player: Player, cfg: GameConfig) -> str:
-    if not player.inventory:
-        return choose_template(EMPTY_INVENTORY_TEMPLATES)
-    lines = ["🎒 背包"]
+    lines = ["\U0001f392 \u80cc\u5305"]
     for inv in player.inventory:
         item = cfg.items.get(inv.item_id)
-        tag = "(已装备)" if inv.equipped else ""
-        stats = _inventory_item_stats(item)
+        label = _gear_growth_label(inv)
+        tag = "(\u5df2\u88c5\u5907)" if inv.equipped else ""
+        stats = _gear_stats_for_inventory(inv, item)
         affix = format_affix(inv.affix)
         affix_text = f" [{affix}]" if affix else ""
         lines.append(
-            f"・{_item_name(cfg, inv.item_id)} ×{inv.quantity}{tag}"
+            f"\u30fb{_item_name(cfg, inv.item_id)}"
+            f"{(' ' + label) if label else ''} x{inv.quantity}{tag}"
             f"{stats}{affix_text}"
         )
     return "\n".join(lines)
 
 
-render_inventory = _render_inventory_with_stats
+def _render_inventory_with_stats(player: Player, cfg: GameConfig) -> str:
+    return render_inventory(player, cfg)
+
 
 
 def _boss_value(boss, key: str):

@@ -72,6 +72,18 @@ def test_render_status_shows_equipped_item_base_stats():
     assert "+20" in text
 
 
+def test_render_status_shows_equipment_growth_labels():
+    p = _player()
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", equipped=True, enhance_level=3, star_level=1),
+    ]
+
+    text = render_status(p, CFG)
+
+    assert "+3" in text
+    assert "\u26051" in text
+
+
 def test_render_status_shows_overdrive_penalty():
     p = _player()
     p.last_active_at = 1000
@@ -141,6 +153,16 @@ def test_render_inventory_empty():
     p = _player()
     p.inventory = []
     assert "空" in render_inventory(p, CFG)
+
+
+def test_render_inventory_shows_material_description():
+    p = _player()
+    p.inventory = [InventoryItem(item_id="refined_iron", quantity=12)]
+
+    text = render_inventory(p, CFG)
+
+    assert CFG.items["refined_iron"].name in text
+    assert "\u6750\u6599" in text
 
 
 def test_render_sell_result_lists_total_and_items():
