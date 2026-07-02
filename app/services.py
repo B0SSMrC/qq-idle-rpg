@@ -10,6 +10,7 @@ from game_core.errors import (
     DuplicateName, CharacterNotFound, GameError, NotEnoughGold, InvalidSlot,
 )
 from storage import repository as repo
+from storage import void_sacrifice_repo
 from storage import world_boss_repo
 
 STAMINA_REFILL_WINDOW_SECONDS = 5 * 60
@@ -109,6 +110,16 @@ class WorldBossAttackResult:
     rewards: list[WorldBossRewardEntry] = field(default_factory=list)
 
 
+@dataclass
+class VoidSacrificeResult:
+    player: Player
+    draw_count: int
+    cost: int
+    draws: list["VoidSacrificeDraw"]
+    pity: "VoidSacrificePity"
+    ten_draw_guarantee_triggered: bool = False
+
+
 def _require(conn: sqlite3.Connection, cfg: GameConfig,
              group_id: str, user_id: str) -> Player:
     p = repo.get_player(conn, group_id, user_id)
@@ -159,6 +170,14 @@ from game_core.world_boss import (
     roll_world_boss_rewards,
     simulate_world_boss_attack,
 )
+from game_core.void_sacrifice import (
+    VOID_SACRIFICE_SINGLE_COST,
+    VOID_SACRIFICE_TEN_COST,
+    VoidSacrificeDraw,
+    VoidSacrificePity,
+    parse_draw_count,
+    roll_void_sacrifice,
+)
 
 
 def do_explore(conn, cfg, group_id, user_id, now, rng) -> ExploreResult:
@@ -166,6 +185,52 @@ def do_explore(conn, cfg, group_id, user_id, now, rng) -> ExploreResult:
     res = _explore(p, cfg, now, rng)
     repo.save_player(conn, p)
     return res
+
+
+def do_void_sacrifice(conn, cfg, group_id, user_id, draw_count, now, rng) -> VoidSacrificeResult:
+    try:
+        count = parse_draw_count(str(draw_count))
+    except ValueError as exc:
+        raise GameError(str(exc)) from exc
+    cost = VOID_SACRIFICE_TEN_COST if count == 10 else VOID_SACRIFICE_SINGLE_COST
+
+    player = _require(conn, cfg, group_id, user_id)
+    if player.gold < cost:
+        raise NotEnoughGold(f"金币不足(需 {cost},当前 {player.gold})")
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        fresh_player = _require(conn, cfg, group_id, user_id)
+        if fresh_player.gold < cost:
+            raise NotEnoughGold(f"金币不足(需 {cost},当前 {fresh_player.gold})")
+        pity = void_sacrifice_repo.get_pity(conn, group_id, user_id)
+        roll = roll_void_sacrifice(count, cfg, rng, pity)
+
+        fresh_player.gold -= cost
+        for draw in roll.draws:
+            if draw.gold_refund > 0:
+                fresh_player.gold += draw.gold_refund
+            if draw.consumable_id:
+                _loot.add_item(fresh_player, draw.consumable_id, cfg=cfg, rng=rng)
+            if draw.item_id:
+                _loot.add_item(fresh_player, draw.item_id, cfg=cfg, rng=rng)
+        fresh_player.last_active_at = now
+
+        repo.save_player(conn, fresh_player, commit=False)
+        void_sacrifice_repo.save_pity(conn, group_id, user_id, roll.pity, now)
+        conn.commit()
+        return VoidSacrificeResult(
+            player=fresh_player,
+            draw_count=count,
+            cost=cost,
+            draws=roll.draws,
+            pity=roll.pity,
+            ten_draw_guarantee_triggered=roll.ten_draw_guarantee_triggered,
+        )
+    except Exception:
+        if conn.in_transaction:
+            conn.rollback()
+        raise
 
 
 def do_equip(conn, cfg, group_id, user_id, item_query) -> Player:
