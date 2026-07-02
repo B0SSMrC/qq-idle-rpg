@@ -179,3 +179,65 @@ def render_inventory(player: Player, cfg: GameConfig) -> str:
         affix_text = f" [{affix}]" if affix else ""
         lines.append(f"・{_item_name(cfg, it.item_id)} ×{it.quantity}{tag}{affix_text}")
     return "\n".join(lines)
+
+
+def _boss_value(boss, key: str):
+    return boss[key]
+
+
+def render_world_boss_status(result, cfg: GameConfig) -> str:
+    boss = result.boss
+    if boss is None:
+        return "🌑 当前没有世界Boss。"
+
+    hp_current = _boss_value(boss, "hp_current")
+    hp_max_value = max(1, _boss_value(boss, "hp_max"))
+    hp_pct = hp_current / hp_max_value * 100
+    lines = [
+        f"🌑 世界Boss: {_boss_value(boss, 'name')}",
+        f"❤️ HP {hp_current}/{hp_max_value} ({hp_pct:.1f}%)",
+        f"⚔️ 参战人数: {len(result.damage_entries)}",
+    ]
+    if result.damage_entries:
+        lines.append("🏆 伤害贡献")
+        for index, entry in enumerate(result.damage_entries[:5], start=1):
+            lines.append(
+                f"{index}. {entry.player_name}  {entry.damage}伤害  "
+                f"{entry.damage_percent * 100:.1f}%"
+            )
+    else:
+        lines.append("还没有玩家造成伤害。")
+    lines.append("")
+    lines.append("发送「进攻世界boss」加入战斗。")
+    return "\n".join(lines)
+
+
+def render_world_boss_attack(result, cfg: GameConfig) -> str:
+    outcome = "倒下" if result.player_defeated else "归来"
+    lines = [
+        f"⚔️ 你向世界Boss「{result.boss_name}」发起进攻,鏖战{result.rounds}回合后{outcome}。",
+        f"本次造成 {result.damage} 伤害。",
+    ]
+    if result.gold_lost > 0:
+        lines.append(f"💰 损失金币 5%: -{result.gold_lost}")
+    if result.player_defeated:
+        lines.append("❤️ 已回满生命。")
+    lines.append(f"⚡ 消耗体力 {result.stamina_cost}")
+    lines.append(f"Boss剩余 HP: {result.boss_hp_current}/{result.boss_hp_max}")
+
+    if result.boss_defeated:
+        lines.append("")
+        lines.append(f"🌑 世界Boss {result.boss_name} 已被击败!")
+        if result.rewards:
+            lines.append("🏆 奖励结算")
+            for reward in result.rewards:
+                parts = [f"{reward.gold}金币"]
+                for item_id, qty in reward.items:
+                    parts.append(f"{_item_name(cfg, item_id)}×{qty}")
+                if reward.gear_item_id:
+                    parts.append(f"掉落:{_item_name(cfg, reward.gear_item_id)}")
+                lines.append(
+                    f"・{reward.player_name} {reward.damage_percent * 100:.1f}% "
+                    f"获得 " + "、".join(parts)
+                )
+    return "\n".join(lines)

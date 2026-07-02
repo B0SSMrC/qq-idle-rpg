@@ -47,6 +47,9 @@ def test_all_standard_commands_are_supported():
         ("回到 35 并探索", "travel_explore", "35 并探索"),
         ("排行榜", "ranking", ""),
         ("帮助", "help", ""),
+        ("世界boss", "world_boss_status", ""),
+        ("进攻世界boss", "world_boss_attack", ""),
+        ("世界boss排行", "world_boss_ranking", ""),
     ]
 
     for raw, command, arg in cases:
@@ -97,6 +100,10 @@ def test_more_natural_phrases_for_all_command_groups():
         ("查看排行榜", "ranking", ""),
         ("深度排行", "ranking", "深度"),
         ("指令菜单", "help", ""),
+        ("boss状态", "world_boss_status", ""),
+        ("打世界boss", "world_boss_attack", ""),
+        ("进攻boss", "world_boss_attack", ""),
+        ("boss排行", "world_boss_ranking", ""),
     ]
 
     for raw, command, arg in cases:
@@ -135,5 +142,6 @@ def test_low_confidence_inputs_do_not_match():
         "去不去35层",
         "重铸一下武器",
         "我觉得状态不错",
+        "boss在哪里",
     ]:
         assert parse_fuzzy_command(raw) is None

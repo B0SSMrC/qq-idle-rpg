@@ -6,7 +6,11 @@ from game_core.models import (
 from game_core.stats import hp_max
 from bot.formatting import (
     render_explore, render_status, render_ranking, render_shop, render_inventory,
-    render_sell_result,
+    render_sell_result, render_world_boss_status, render_world_boss_attack,
+)
+from app.services import (
+    WorldBossAttackResult, WorldBossDamageEntry, WorldBossStatusResult,
+    WorldBossRewardEntry,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -117,3 +121,60 @@ def test_render_sell_result_lists_total_and_items():
 def test_render_sell_result_empty():
     text = render_sell_result(SellResult(), gold_after=312)
     assert "312" in text
+
+
+def test_render_world_boss_status_lists_hp_and_damage():
+    boss = {
+        "name": "万劫魔君",
+        "hp_current": 800,
+        "hp_max": 1000,
+    }
+    result = WorldBossStatusResult(
+        boss=boss,
+        damage_entries=[
+            WorldBossDamageEntry("u", "小明", 200, 0.2, 1),
+        ],
+    )
+
+    text = render_world_boss_status(result, CFG)
+
+    assert "万劫魔君" in text
+    assert "800/1000" in text
+    assert "小明" in text
+    assert "20.0%" in text
+
+
+def test_render_world_boss_attack_shows_defeat_penalty_and_rewards():
+    result = WorldBossAttackResult(
+        player=_player(),
+        boss_id=1,
+        boss_name="万劫魔君",
+        damage=500,
+        rounds=3,
+        stamina_cost=50,
+        gold_lost=20,
+        player_defeated=True,
+        boss_defeated=True,
+        boss_hp_current=0,
+        boss_hp_max=1000,
+        rewards=[
+            WorldBossRewardEntry(
+                user_id="u",
+                player_name="小明",
+                damage=500,
+                damage_percent=0.5,
+                gold=1000,
+                items=[("hp_potion", 2)],
+                gear_item_id="iron_sword",
+            )
+        ],
+    )
+
+    text = render_world_boss_attack(result, CFG)
+
+    assert "鏖战3回合" in text
+    assert "损失金币 5%" in text
+    assert "已被击败" in text
+    assert "小明" in text
+    assert "金疮药×2" in text
+    assert "铁剑" in text

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sqlite3
 import math
+import json
 from dataclasses import dataclass, field
 from game_core.models import Player, make_new_player, GameConfig
 from game_core.stats import hp_max
@@ -9,6 +10,7 @@ from game_core.errors import (
     DuplicateName, CharacterNotFound, GameError, NotEnoughGold, InvalidSlot,
 )
 from storage import repository as repo
+from storage import world_boss_repo
 
 STAMINA_REFILL_WINDOW_SECONDS = 5 * 60
 STAMINA_REFILL_WINDOW_LIMIT = 300
@@ -65,6 +67,48 @@ class ReforgeResult:
     new_affix: str
 
 
+@dataclass
+class WorldBossDamageEntry:
+    user_id: str
+    player_name: str
+    damage: int
+    damage_percent: float
+    attack_count: int
+
+
+@dataclass
+class WorldBossRewardEntry:
+    user_id: str
+    player_name: str
+    damage: int
+    damage_percent: float
+    gold: int
+    items: list[tuple[str, int]] = field(default_factory=list)
+    gear_item_id: str = ""
+
+
+@dataclass
+class WorldBossStatusResult:
+    boss: sqlite3.Row | None
+    damage_entries: list[WorldBossDamageEntry] = field(default_factory=list)
+
+
+@dataclass
+class WorldBossAttackResult:
+    player: Player
+    boss_id: int
+    boss_name: str
+    damage: int
+    rounds: int
+    stamina_cost: int
+    gold_lost: int
+    player_defeated: bool
+    boss_defeated: bool
+    boss_hp_current: int
+    boss_hp_max: int
+    rewards: list[WorldBossRewardEntry] = field(default_factory=list)
+
+
 def _require(conn: sqlite3.Connection, cfg: GameConfig,
              group_id: str, user_id: str) -> Player:
     p = repo.get_player(conn, group_id, user_id)
@@ -108,6 +152,13 @@ from game_core.config import find_item_id
 from game_core.exploration import explore as _explore
 from game_core import loot as _loot, shop as _shop, ranking as _ranking
 from game_core.models import ExploreResult, ItemDef
+from game_core.world_boss import (
+    WORLD_BOSS_GOLD_LOSS_PCT,
+    WORLD_BOSS_STAMINA_COST,
+    WorldBossState,
+    roll_world_boss_rewards,
+    simulate_world_boss_attack,
+)
 
 
 def do_explore(conn, cfg, group_id, user_id, now, rng) -> ExploreResult:
@@ -382,3 +433,206 @@ def shop_list(cfg) -> list[ItemDef]:
 def get_ranking(conn, cfg, group_id, key="level", limit=10) -> list[Player]:
     players = repo.list_group_players(conn, group_id)
     return _ranking.rank_players(players, key=key, limit=limit)
+
+
+def _world_boss_damage_entries(conn, boss) -> list[WorldBossDamageEntry]:
+    if boss is None:
+        return []
+    hp_max = max(1, boss["hp_max"])
+    entries = []
+    for row in world_boss_repo.list_damage(conn, boss["id"]):
+        damage = int(row["damage"])
+        entries.append(WorldBossDamageEntry(
+            user_id=row["user_id"],
+            player_name=row["player_name"],
+            damage=damage,
+            damage_percent=damage / hp_max,
+            attack_count=row["attack_count"],
+        ))
+    return entries
+
+
+def do_world_boss_status(conn, cfg, group_id, now) -> WorldBossStatusResult:
+    active_count = world_boss_repo.count_active_players(conn, group_id, now)
+    boss = world_boss_repo.create_or_get_active_boss(conn, group_id, now, active_count)
+    return WorldBossStatusResult(
+        boss=boss,
+        damage_entries=_world_boss_damage_entries(conn, boss),
+    )
+
+
+def _world_boss_rewards(conn, cfg, boss, now, rng) -> list[WorldBossRewardEntry]:
+    if world_boss_repo.reward_exists(conn, boss["id"]):
+        return []
+
+    rows = world_boss_repo.list_damage(conn, boss["id"])
+    active_count = max(1, len(rows))
+    rewards: list[WorldBossRewardEntry] = []
+    hp_max_value = max(1, boss["hp_max"])
+
+    for row in rows:
+        player = repo.get_player(conn, boss["group_id"], row["user_id"])
+        if player is None:
+            continue
+        damage = int(row["damage"])
+        damage_percent = damage / hp_max_value
+        items: list[tuple[str, int]] = []
+        gear_item_id = ""
+        if damage_percent < 0.01:
+            gold = 200
+        else:
+            reward = roll_world_boss_rewards(
+                damage_percent, player.level, active_count, cfg, rng
+            )
+            gold = reward.gold
+            for item_id, qty in reward.consumables:
+                _loot.add_item(player, item_id, qty=qty, cfg=cfg, rng=rng)
+                items.append((item_id, qty))
+            if reward.gear_item_id:
+                _loot.add_item(player, reward.gear_item_id, cfg=cfg, rng=rng)
+                gear_item_id = reward.gear_item_id
+
+        player.gold += gold
+        repo.save_player(conn, player, commit=False)
+        encoded_items = list(items)
+        if gear_item_id:
+            encoded_items.append((gear_item_id, 1))
+        world_boss_repo.record_reward(
+            conn,
+            boss["id"],
+            boss["group_id"],
+            player.user_id,
+            damage,
+            damage_percent,
+            gold,
+            json.dumps(encoded_items, ensure_ascii=False),
+            now,
+        )
+        rewards.append(WorldBossRewardEntry(
+            user_id=player.user_id,
+            player_name=player.name,
+            damage=damage,
+            damage_percent=damage_percent,
+            gold=gold,
+            items=items,
+            gear_item_id=gear_item_id,
+        ))
+    return rewards
+
+
+def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAttackResult:
+    player = _require(conn, cfg, group_id, user_id)
+    settle_stamina(player, now, cfg.balance.stamina_regen_minutes, cfg.balance.stamina_max,
+                   cfg.balance.stamina_regen_amount)
+    if player.stamina < WORLD_BOSS_STAMINA_COST:
+        raise GameError(f"体力不足(需 {WORLD_BOSS_STAMINA_COST},当前 {player.stamina})")
+
+    active_count = world_boss_repo.count_active_players(conn, group_id, now)
+    boss = world_boss_repo.create_or_get_active_boss(conn, group_id, now, active_count)
+    if boss is None:
+        raise GameError("世界Boss正在休整,等待下一次刷新吧。")
+    simulation = simulate_world_boss_attack(
+        player,
+        WorldBossState(
+            hp_current=boss["hp_current"],
+            atk=boss["atk"],
+            defense=boss["def"],
+        ),
+        cfg,
+        rng,
+    )
+
+    for _ in range(3):
+        boss = world_boss_repo.get_active_boss(conn, group_id)
+        if boss is None:
+            raise GameError("世界Boss已经被击败,等待下一次刷新吧。")
+        effective_damage = min(simulation.damage, boss["hp_current"])
+        if effective_damage <= 0:
+            raise GameError("世界Boss已经被击败,等待下一次刷新吧。")
+
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            fresh_player = _require(conn, cfg, group_id, user_id)
+            settle_stamina(
+                fresh_player,
+                now,
+                cfg.balance.stamina_regen_minutes,
+                cfg.balance.stamina_max,
+                cfg.balance.stamina_regen_amount,
+            )
+            if fresh_player.stamina < WORLD_BOSS_STAMINA_COST:
+                raise GameError(
+                    f"体力不足(需 {WORLD_BOSS_STAMINA_COST},当前 {fresh_player.stamina})"
+                )
+            fresh_player.stamina -= WORLD_BOSS_STAMINA_COST
+            fresh_player.last_active_at = now
+            gold_lost = 0
+            if simulation.player_defeated:
+                gold_lost = int(fresh_player.gold * WORLD_BOSS_GOLD_LOSS_PCT)
+                fresh_player.gold -= gold_lost
+                fresh_player.current_hp = hp_max(fresh_player, cfg)
+            else:
+                fresh_player.current_hp = max(1, min(hp_max(fresh_player, cfg),
+                                                     simulation.player_hp_after))
+
+            updated = world_boss_repo.apply_boss_damage(
+                conn,
+                boss["id"],
+                boss["version"],
+                effective_damage,
+                now,
+            )
+            if not updated:
+                conn.rollback()
+                continue
+
+            world_boss_repo.add_damage(
+                conn,
+                boss["id"],
+                group_id,
+                user_id,
+                fresh_player.name,
+                effective_damage,
+                now,
+            )
+            repo.save_player(conn, fresh_player, commit=False)
+            updated_boss = world_boss_repo.get_boss(conn, boss["id"])
+            rewards: list[WorldBossRewardEntry] = []
+            boss_defeated = updated_boss["status"] == "dead"
+            if boss_defeated:
+                rewards = _world_boss_rewards(conn, cfg, updated_boss, now, rng)
+            conn.commit()
+            return WorldBossAttackResult(
+                player=fresh_player,
+                boss_id=boss["id"],
+                boss_name=boss["name"],
+                damage=effective_damage,
+                rounds=simulation.rounds,
+                stamina_cost=WORLD_BOSS_STAMINA_COST,
+                gold_lost=gold_lost,
+                player_defeated=simulation.player_defeated,
+                boss_defeated=boss_defeated,
+                boss_hp_current=updated_boss["hp_current"],
+                boss_hp_max=updated_boss["hp_max"],
+                rewards=rewards,
+            )
+        except Exception:
+            if conn.in_transaction:
+                conn.rollback()
+            raise
+
+    raise GameError("世界Boss战斗结算繁忙,请稍后再试。")
+
+
+def get_due_world_boss_announcements(conn, cfg, now) -> list[WorldBossStatusResult]:
+    return [
+        WorldBossStatusResult(
+            boss=boss,
+            damage_entries=_world_boss_damage_entries(conn, boss),
+        )
+        for boss in world_boss_repo.list_due_announcements(conn, now)
+    ]
+
+
+def mark_world_boss_announced(conn, boss_id: int, now: int) -> None:
+    world_boss_repo.mark_announced(conn, boss_id, now)

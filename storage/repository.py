@@ -76,14 +76,15 @@ def create_player(conn: sqlite3.Connection, player: Player) -> Player:
     return player
 
 
-def save_player(conn: sqlite3.Connection, player: Player) -> None:
+def save_player(conn: sqlite3.Connection, player: Player, *, commit: bool = True) -> None:
     set_clause = ",".join(f"{c}=?" for c in PLAYER_COLS)
     conn.execute(
         f"UPDATE players SET {set_clause} WHERE id=?",
         (*[getattr(player, c) for c in PLAYER_COLS], player.id))
     _save_inventory(conn, player)
     _save_buffs(conn, player)
-    conn.commit()
+    if commit:
+        conn.commit()
 
 
 def _save_inventory(conn: sqlite3.Connection, player: Player) -> None:

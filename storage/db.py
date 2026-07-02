@@ -50,6 +50,53 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     name        TEXT PRIMARY KEY,
     applied_at  INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS world_bosses (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id              TEXT NOT NULL,
+    boss_key              TEXT NOT NULL,
+    name                  TEXT NOT NULL,
+    hp_max                INTEGER NOT NULL,
+    hp_current            INTEGER NOT NULL,
+    atk                   INTEGER NOT NULL,
+    def                   INTEGER NOT NULL,
+    status                TEXT NOT NULL,
+    version               INTEGER NOT NULL DEFAULT 0,
+    spawned_at            INTEGER NOT NULL,
+    expires_at            INTEGER NOT NULL,
+    next_spawn_at         INTEGER NOT NULL DEFAULT 0,
+    last_announcement_at  INTEGER NOT NULL DEFAULT 0,
+    updated_at            INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_world_bosses_group_status
+ON world_bosses(group_id, status);
+
+CREATE TABLE IF NOT EXISTS world_boss_damage (
+    boss_id       INTEGER NOT NULL REFERENCES world_bosses(id),
+    group_id      TEXT NOT NULL,
+    user_id       TEXT NOT NULL,
+    player_name   TEXT NOT NULL,
+    damage        INTEGER NOT NULL DEFAULT 0,
+    attack_count  INTEGER NOT NULL DEFAULT 0,
+    updated_at    INTEGER NOT NULL,
+    PRIMARY KEY (boss_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_world_boss_damage_boss
+ON world_boss_damage(boss_id, damage DESC);
+
+CREATE TABLE IF NOT EXISTS world_boss_rewards (
+    boss_id         INTEGER NOT NULL REFERENCES world_bosses(id),
+    group_id        TEXT NOT NULL,
+    user_id         TEXT NOT NULL,
+    damage          INTEGER NOT NULL,
+    damage_percent  REAL NOT NULL,
+    gold            INTEGER NOT NULL,
+    items_json      TEXT NOT NULL DEFAULT '[]',
+    claimed_at      INTEGER NOT NULL,
+    PRIMARY KEY (boss_id, user_id)
+);
 """
 
 LEGACY_ITEM_ID_MIGRATION = "2026_06_18_legacy_item_ids"

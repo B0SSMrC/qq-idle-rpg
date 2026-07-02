@@ -6,6 +6,7 @@ Identity mapping:
 """
 from __future__ import annotations
 
+import asyncio
 import random
 
 import nonebot
@@ -32,12 +33,15 @@ from bot.formatting import (
     render_shop,
     render_inventory,
     render_sell_result,
+    render_world_boss_attack,
+    render_world_boss_status,
 )
 from game_core.affixes import format_affix
 from game_core.errors import GameError
 from storage import repository as repo
 
 logger = nonebot.log.logger
+_world_boss_announcement_task: asyncio.Task | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -491,6 +495,79 @@ async def handle_sell_gear(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 世界Boss
+# ---------------------------------------------------------------------------
+
+cmd_world_boss = on_command(
+    "世界boss",
+    aliases={"世界boss状态"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+async def _handle_world_boss_status(bot: Bot, event: Event):
+    gid, _ = _scope(event)
+
+    async def _do():
+        result = services.do_world_boss_status(state.conn(), state.CFG, gid, state.now())
+        await _reply(bot, event, render_world_boss_status(result, state.CFG))
+
+    await _guard(bot, event, _do())
+
+
+@cmd_world_boss.handle()
+async def handle_world_boss(bot: Bot, event: Event):
+    await _handle_world_boss_status(bot, event)
+
+
+cmd_attack_world_boss = on_command(
+    "进攻世界boss",
+    aliases={"攻击世界boss", "挑战世界boss"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+async def _handle_attack_world_boss(bot: Bot, event: Event):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_attack_world_boss(
+                state.conn(), state.CFG, gid, uid, state.now(), random.Random()
+            )
+            await _reply_to(
+                bot,
+                event,
+                result.player.name,
+                render_world_boss_attack(result, state.CFG),
+            )
+
+    await _guard(bot, event, _do())
+
+
+@cmd_attack_world_boss.handle()
+async def handle_attack_world_boss(bot: Bot, event: Event):
+    await _handle_attack_world_boss(bot, event)
+
+
+cmd_world_boss_ranking = on_command(
+    "世界boss排行",
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+@cmd_world_boss_ranking.handle()
+async def handle_world_boss_ranking(bot: Bot, event: Event):
+    await _handle_world_boss_status(bot, event)
+
+
+# ---------------------------------------------------------------------------
 # 前往 / 回层
 # ---------------------------------------------------------------------------
 
@@ -589,6 +666,8 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 商店         — 查看商店
 购买 <物品>   — 购买物品
 出售装备      — 一键出售未装备武器/防具
+世界boss      — 查看世界Boss状态
+进攻世界boss   — 消耗50体力进攻世界Boss
 回满生命      — 使用背包药品补满生命
 回满体力      — 花金币购买回气丹并补满体力
 重铸 武器/装备 [次数] — 花金币重随机词条
@@ -654,6 +733,12 @@ async def handle_fuzzy(bot: Bot, event: Event):
         await _handle_buy_item(bot, event, parsed.arg)
     elif parsed.command == "sell_gear":
         await handle_sell_gear(bot, event)
+    elif parsed.command == "world_boss_status":
+        await _handle_world_boss_status(bot, event)
+    elif parsed.command == "world_boss_attack":
+        await _handle_attack_world_boss(bot, event)
+    elif parsed.command == "world_boss_ranking":
+        await _handle_world_boss_status(bot, event)
     elif parsed.command == "travel":
         await _handle_travel_arg(bot, event, parsed.arg)
     elif parsed.command == "travel_explore":
@@ -694,3 +779,39 @@ async def handle_unknown(bot: Bot, event: Event):
     if not text:
         return
     await _reply(bot, event, random.choice(_UNKNOWN_COMMAND_REPLIES))
+
+
+async def _world_boss_announcement_loop():
+    while True:
+        await asyncio.sleep(60)
+        bots = nonebot.get_bots()
+        if not bots:
+            continue
+        bot = next(iter(bots.values()))
+        now = state.now()
+        for result in services.get_due_world_boss_announcements(
+            state.conn(), state.CFG, now
+        ):
+            group_id = result.boss["group_id"]
+            if not str(group_id).isdigit():
+                continue
+            try:
+                await bot.call_api(
+                    "send_group_msg",
+                    group_id=int(group_id),
+                    message=render_world_boss_status(result, state.CFG),
+                )
+                services.mark_world_boss_announced(
+                    state.conn(), result.boss["id"], state.now()
+                )
+            except Exception:
+                logger.exception("世界Boss定时公告发送失败")
+
+
+@nonebot.get_driver().on_startup
+async def _start_world_boss_announcement_loop():
+    global _world_boss_announcement_task
+    if _world_boss_announcement_task is None or _world_boss_announcement_task.done():
+        _world_boss_announcement_task = asyncio.create_task(
+            _world_boss_announcement_loop()
+        )
