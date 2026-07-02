@@ -159,11 +159,15 @@ def test_render_void_sacrifice_uses_distinct_affixes_for_duplicate_gear():
     player.inventory = [
         InventoryItem(
             item_id="thunder_plate",
-            affix='{"name":"first","effects":{"hp_pct":0.14}}',
+            affix='{"name":"old","effects":{"hp_pct":0.14}}',
         ),
         InventoryItem(
             item_id="thunder_plate",
-            affix='{"name":"second","effects":{"def_pct":0.09,"hp_pct":0.11}}',
+            affix='{"name":"new_first","effects":{"def_pct":0.09,"hp_pct":0.11}}',
+        ),
+        InventoryItem(
+            item_id="thunder_plate",
+            affix='{"name":"new_second","effects":{"atk_pct":0.12}}',
         ),
     ]
     result = VoidSacrificeResult(
@@ -181,8 +185,9 @@ def test_render_void_sacrifice_uses_distinct_affixes_for_duplicate_gear():
 
     text = render_void_sacrifice(result, CFG)
 
-    assert "first(" in text
-    assert "second(" in text
+    assert "new_first(" in text
+    assert "new_second(" in text
+    assert "old(" not in text
 
 
 def test_render_world_boss_status_lists_hp_and_damage():

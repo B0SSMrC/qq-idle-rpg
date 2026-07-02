@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 import random
 from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
@@ -102,9 +102,17 @@ def render_sell_result(result: SellResult, gold_after: int) -> str:
 
 
 def render_void_sacrifice(result, cfg: GameConfig) -> str:
+    draw_counts = Counter(
+        draw.item_id for draw in result.draws if getattr(draw, "item_id", None)
+    )
     inventory_by_item_id = defaultdict(deque)
     for inv in result.player.inventory:
+        remaining = draw_counts.get(inv.item_id, 0)
+        if remaining <= 0:
+            continue
         inventory_by_item_id[inv.item_id].append(inv)
+        if len(inventory_by_item_id[inv.item_id]) > remaining:
+            inventory_by_item_id[inv.item_id].popleft()
 
     lines = [
         f"🌌 虚空献祭 ×{result.draw_count}",
