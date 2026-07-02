@@ -5,6 +5,8 @@ from game_core.models import Player, InventoryItem
 PLAYER_COLS = [
     "group_id", "user_id", "name", "level", "exp", "gold", "stamina",
     "stamina_at", "current_hp", "current_depth", "max_depth",
+    "stamina_refill_window_start", "stamina_refill_window_amount",
+    "overdrive_until",
     "created_at", "last_active_at",
 ]
 
@@ -15,7 +17,11 @@ def _row_to_player(conn, row: sqlite3.Row, inv_rows: list[sqlite3.Row]) -> Playe
         level=row["level"], exp=row["exp"], gold=row["gold"],
         stamina=row["stamina"], stamina_at=row["stamina_at"],
         current_hp=row["current_hp"], current_depth=row["current_depth"],
-        max_depth=row["max_depth"], created_at=row["created_at"],
+        max_depth=row["max_depth"],
+        stamina_refill_window_start=row["stamina_refill_window_start"],
+        stamina_refill_window_amount=row["stamina_refill_window_amount"],
+        overdrive_until=row["overdrive_until"],
+        created_at=row["created_at"],
         last_active_at=row["last_active_at"], id=row["id"],
     )
     p.inventory = [

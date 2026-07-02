@@ -123,6 +123,9 @@ class Player:
     current_hp: int = 0
     current_depth: int = 1
     max_depth: int = 1
+    stamina_refill_window_start: int = 0
+    stamina_refill_window_amount: int = 0
+    overdrive_until: int = 0
     created_at: int = 0
     last_active_at: int = 0
     inventory: list[InventoryItem] = field(default_factory=list)

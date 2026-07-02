@@ -46,7 +46,7 @@ def render_explore(player: Player, res: ExploreResult, cfg: GameConfig) -> str:
         lines.append(f"📊 升级 +{res.level_ups}!  当前 Lv.{player.level}")
     lines.append(f"🏆 最深抵达 第{player.max_depth}层")
     if res.defeated:
-        lines.append("💀 重伤回城,已回到第 1 层(金币略有损失)")
+        lines.append("💀 重伤休整,当前层数保留(金币略有损失)")
     elif res.stamina_left < cfg.balance.stamina_cost_per_step:
         lines.append("💤 体力耗尽,攒一攒再来下潜~")
     return "\n".join(lines)
@@ -66,6 +66,9 @@ def render_status(player: Player, cfg: GameConfig) -> str:
         for b in player.buffs:
             icon = "⚔️攻击" if b.type == "atk" else "🛡️防御"
             lines.append(f"  {icon}+{b.amount}  (剩余{b.steps_left}步)")
+    if player.overdrive_until > player.last_active_at:
+        remaining = max(1, (player.overdrive_until - player.last_active_at + 59) // 60)
+        lines.append(f"💥 爆气:攻击-15% 防御-20% (剩余约{remaining}分钟)")
     return "\n".join(lines)
 
 

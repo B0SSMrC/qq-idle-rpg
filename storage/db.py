@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS players (
     current_hp      INTEGER NOT NULL,
     current_depth   INTEGER NOT NULL DEFAULT 1,
     max_depth       INTEGER NOT NULL DEFAULT 1,
+    stamina_refill_window_start INTEGER NOT NULL DEFAULT 0,
+    stamina_refill_window_amount INTEGER NOT NULL DEFAULT 0,
+    overdrive_until INTEGER NOT NULL DEFAULT 0,
     created_at      INTEGER NOT NULL,
     last_active_at  INTEGER NOT NULL,
     UNIQUE(group_id, user_id)
@@ -110,6 +113,18 @@ def _ensure_unique_player_names(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_player_columns(conn: sqlite3.Connection) -> None:
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(players)")}
+    additions = {
+        "stamina_refill_window_start": "INTEGER NOT NULL DEFAULT 0",
+        "stamina_refill_window_amount": "INTEGER NOT NULL DEFAULT 0",
+        "overdrive_until": "INTEGER NOT NULL DEFAULT 0",
+    }
+    for name, ddl in additions.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE players ADD COLUMN {name} {ddl}")
+
+
 def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = False) -> None:
     """升级旧存档：建 buffs 表 + 迁移旧物品 ID。
 
@@ -139,6 +154,8 @@ def migrate(conn: sqlite3.Connection, *, legacy_item_migration_needed: bool = Fa
     """)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_buffs_player ON buffs(player_id)")
+
+    _ensure_player_columns(conn)
 
     if (legacy_item_migration_needed
             and not _migration_applied(conn, LEGACY_ITEM_ID_MIGRATION)):

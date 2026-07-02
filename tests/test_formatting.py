@@ -52,6 +52,16 @@ def test_render_status_contains_stats():
     assert "312" in text         # 金币
 
 
+def test_render_status_shows_overdrive_penalty():
+    p = _player()
+    p.last_active_at = 1000
+    p.overdrive_until = 1600
+    text = render_status(p, CFG)
+    assert "爆气" in text
+    assert "攻击-15%" in text
+    assert "防御-20%" in text
+
+
 def test_render_ranking_lists_names_with_rank():
     players = [_player()]
     text = render_ranking(players, CFG, key="level")

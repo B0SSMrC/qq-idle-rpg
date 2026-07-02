@@ -20,7 +20,10 @@ def attack(player: Player, cfg: GameConfig) -> int:
     base = b.base_atk + b.stats_atk * (player.level - 1)
     bonus = sum(d.atk for d in _equipped_defs(player, cfg))
     buff_bonus = sum(buf.amount for buf in player.buffs if buf.type == "atk")
-    return base + bonus + buff_bonus
+    value = base + bonus + buff_bonus
+    if player.overdrive_until > player.last_active_at:
+        value = int(value * 0.85)
+    return value
 
 
 def defense(player: Player, cfg: GameConfig) -> int:
@@ -28,7 +31,10 @@ def defense(player: Player, cfg: GameConfig) -> int:
     base = b.base_def + b.stats_def * (player.level - 1)
     bonus = sum(d.defense for d in _equipped_defs(player, cfg))
     buff_bonus = sum(buf.amount for buf in player.buffs if buf.type == "def")
-    return base + bonus + buff_bonus
+    value = base + bonus + buff_bonus
+    if player.overdrive_until > player.last_active_at:
+        value = int(value * 0.8)
+    return value
 
 
 def power(player: Player, cfg: GameConfig) -> int:

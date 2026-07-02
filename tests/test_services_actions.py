@@ -8,7 +8,8 @@ from game_core.models import InventoryItem
 from game_core.errors import NotEnoughGold, ItemNotFound, CharacterNotFound, GameError
 from app.services import (
     register, do_explore, do_equip, do_use, do_buy,
-    do_sell_unequipped_gear, do_travel_depth, get_ranking,
+    do_sell_unequipped_gear, do_travel_depth, do_travel_and_explore,
+    do_refill_stamina, get_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -74,6 +75,85 @@ def test_do_use_potion():
     assert all(i.item_id != "hp_potion" for i in after.inventory)
 
 
+def test_do_use_potion_supports_quantity_and_persists():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.current_hp = 10
+    p.inventory.append(InventoryItem(item_id="hp_potion", quantity=3))
+    repo.save_player(conn, p)
+    do_use(conn, CFG, "g", "u", "金疮药", quantity=3)
+    after = repo.get_player(conn, "g", "u")
+    assert after.current_hp == 120
+    assert all(i.item_id != "hp_potion" for i in after.inventory)
+
+
+def test_do_refill_stamina_buys_needed_stamina_potions():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.stamina = 10
+    p.stamina_at = 1000
+    p.gold = 200
+    repo.save_player(conn, p)
+
+    refilled, cost, overdrive_triggered = do_refill_stamina(conn, CFG, "g", "u", now=1000)
+
+    assert refilled.stamina == CFG.balance.stamina_max
+    assert cost == 160
+    assert refilled.gold == 40
+    assert overdrive_triggered is False
+
+
+def test_do_refill_stamina_rejects_insufficient_gold():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.stamina = 0
+    p.stamina_at = 1000
+    p.gold = 100
+    repo.save_player(conn, p)
+
+    with pytest.raises(NotEnoughGold, match="金币不足"):
+        do_refill_stamina(conn, CFG, "g", "u", now=1000)
+
+
+def test_do_refill_stamina_triggers_overdrive_after_window_limit():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.stamina = 0
+    p.stamina_at = 1100
+    p.gold = 1000
+    p.stamina_refill_window_start = 1000
+    p.stamina_refill_window_amount = 250
+    repo.save_player(conn, p)
+
+    refilled, cost, overdrive_triggered = do_refill_stamina(conn, CFG, "g", "u", now=1100)
+
+    assert cost == 160
+    assert overdrive_triggered is True
+    assert refilled.overdrive_until == 1100 + 10 * 60
+    assert repo.get_player(conn, "g", "u").overdrive_until == 1100 + 10 * 60
+
+
+def test_do_use_stamina_potion_counts_toward_overdrive_window():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "小明", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.stamina = 0
+    p.stamina_at = 1100
+    p.stamina_refill_window_start = 1000
+    p.stamina_refill_window_amount = 250
+    p.inventory.append(InventoryItem(item_id="stamina_potion", quantity=2))
+    repo.save_player(conn, p)
+
+    used = do_use(conn, CFG, "g", "u", "回气丹", quantity=2, now=1100)
+
+    assert used.stamina == CFG.balance.stamina_max
+    assert used.overdrive_until == 1100 + 10 * 60
+
+
 def test_do_sell_unequipped_gear_persists_gold_and_inventory():
     conn = _conn()
     register(conn, CFG, "g", "u", "灏忔槑", now=0)
@@ -134,6 +214,24 @@ def test_do_travel_depth_rejects_unreached_depth():
 
     with pytest.raises(GameError):
         do_travel_depth(conn, CFG, "g", "u", "13")
+
+
+def test_do_travel_and_explore_moves_before_exploring():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "Player", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.current_depth = 60
+    p.max_depth = 60
+    p.stamina = 10
+    repo.save_player(conn, p)
+
+    moved, res = do_travel_and_explore(
+        conn, CFG, "g", "u", "35", now=0, rng=random.Random(1)
+    )
+
+    assert res.depth_before == 35
+    assert moved.current_depth == res.depth_after
+    assert repo.get_player(conn, "g", "u").current_depth == res.depth_after
 
 
 def test_get_ranking_group_scoped_and_sorted():

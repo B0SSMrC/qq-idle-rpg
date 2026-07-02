@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
 
 import bot.state as state
 from app import services
+from bot.command_parsing import parse_item_quantity, parse_travel_explore_arg
 from bot.formatting import (
     render_explore,
     render_status,
@@ -224,7 +225,12 @@ cmd_use = on_command("使用", rule=to_me(), priority=10, block=True)
 
 @cmd_use.handle()
 async def handle_use(bot: Bot, event: Event):
-    item_query = _arg(event, "使用")
+    item_arg = _arg(event, "使用")
+    try:
+        item_query, quantity = parse_item_quantity(item_arg)
+    except ValueError as e:
+        await _reply(bot, event, str(e))
+        return
     if not item_query:
         await _reply(bot, event, "用法:使用 物品名")
         return
@@ -232,8 +238,47 @@ async def handle_use(bot: Bot, event: Event):
 
     async def _do():
         async with state.player_lock(gid, uid):
-            p = services.do_use(state.conn(), state.CFG, gid, uid, item_query)
-            await _reply_to(bot, event, p.name, render_status(p, state.CFG))
+            before = repo.get_player(state.conn(), gid, uid)
+            previous_overdrive = before.overdrive_until if before is not None else 0
+            now = state.now()
+            p = services.do_use(
+                state.conn(), state.CFG, gid, uid, item_query, quantity=quantity, now=now
+            )
+            text = render_status(p, state.CFG)
+            if p.overdrive_until > previous_overdrive and p.overdrive_until > now:
+                text = (
+                    "💥 你触发了「爆气」负面buff:攻击下降15%,防御下降20%,持续10分钟。\n"
+                    + text
+                )
+            await _reply_to(bot, event, p.name, text)
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
+# 回满体力
+# ---------------------------------------------------------------------------
+
+cmd_refill_stamina = on_command("回满体力", aliases={"补满体力"}, rule=to_me(), priority=10, block=True)
+
+
+@cmd_refill_stamina.handle()
+async def handle_refill_stamina(bot: Bot, event: Event):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            p, cost, overdrive_triggered = services.do_refill_stamina(
+                state.conn(), state.CFG, gid, uid, state.now()
+            )
+            if cost == 0:
+                text = "体力已满,无需购买回气丹。\n" + render_status(p, state.CFG)
+            else:
+                text = f"✅ 已回满体力,消耗{cost}金币。"
+                if overdrive_triggered:
+                    text += "\n💥 你触发了「爆气」负面buff:攻击下降15%,防御下降20%,持续10分钟。"
+                text += "\n" + render_status(p, state.CFG)
+            await _reply_to(bot, event, p.name, text)
 
     await _guard(bot, event, _do())
 
@@ -325,6 +370,32 @@ async def handle_travel(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 回到并探索
+# ---------------------------------------------------------------------------
+
+cmd_travel_explore = on_command("回到", rule=to_me(), priority=10, block=True)
+
+
+@cmd_travel_explore.handle()
+async def handle_travel_explore(bot: Bot, event: Event):
+    try:
+        depth_query = parse_travel_explore_arg(_arg(event, "回到"))
+    except ValueError as e:
+        await _reply(bot, event, str(e))
+        return
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            p, res = services.do_travel_and_explore(
+                state.conn(), state.CFG, gid, uid, depth_query, state.now(), random.Random()
+            )
+            await _reply_to(bot, event, p.name, render_explore(p, res, state.CFG))
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
 # 排行榜 / 排名
 # ---------------------------------------------------------------------------
 
@@ -358,10 +429,13 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 装备 <物品>   — 装备武器/护甲
 卸下 <物品>   — 卸下装备
 使用 <物品>   — 使用消耗品(药水/丹药/符箓)
+使用 <物品> <数量> — 批量使用消耗品
 商店         — 查看商店
 购买 <物品>   — 购买物品
 出售装备      — 一键出售未装备武器/防具
+回满体力      — 花金币购买回气丹并补满体力
 前往 <层数>   — 回到已探索过的层数刷资源
+回到 <层数> 并探索 — 回层后立刻探索
 排行榜       — 等级榜
 排行榜 深度   — 深度榜
 ──────────────
@@ -369,7 +443,7 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 🛡️ 轻甲(高血) 重甲(高防)
 ✨ 攻击/防御临时Buff 按步数消耗
 💊 体力药水可买 加速循环
-凡→良→上→极→仙 五品 最深50层
+凡→良→上→极→仙 五品 最深100层
 ──────────────
 私聊直接发指令;群里/频道里需 @机器人。"""
 

@@ -96,3 +96,17 @@ def test_save_overwrites_old_buffs():
     assert len(loaded.buffs) == 1
     assert loaded.buffs[0].type == "def"
     assert loaded.buffs[0].amount == 8
+
+
+def test_save_and_load_stamina_refill_and_overdrive_fields():
+    conn = _conn()
+    p = create_player(conn, _player())
+    p.stamina_refill_window_start = 1000
+    p.stamina_refill_window_amount = 250
+    p.overdrive_until = 1600
+    save_player(conn, p)
+
+    loaded = get_player(conn, "g", "u")
+    assert loaded.stamina_refill_window_start == 1000
+    assert loaded.stamina_refill_window_amount == 250
+    assert loaded.overdrive_until == 1600

@@ -8,6 +8,7 @@ from game_core.loot import (
 )
 from game_core.stats import hp_max
 from game_core.errors import ItemNotFound, InvalidSlot
+from game_core.errors import GameError
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CFG = load_config(DATA_DIR)
@@ -76,6 +77,33 @@ def test_use_potion_heals_and_consumes():
     use_item(p, "hp_potion", CFG)
     assert p.current_hp == min(hp_max(p, CFG), 10 + 40)
     assert all(i.item_id != "hp_potion" for i in p.inventory)   # 用完移除
+
+
+def test_use_potion_supports_quantity():
+    p = _player()
+    p.current_hp = 10
+    add_item(p, "hp_potion", qty=3)
+    used = use_item(p, "hp_potion", CFG, quantity=3)
+    assert used == 3
+    assert p.current_hp == min(hp_max(p, CFG), 10 + 40 * 3)
+    assert all(i.item_id != "hp_potion" for i in p.inventory)
+
+
+def test_use_potion_caps_quantity_at_inventory_count():
+    p = _player()
+    p.current_hp = 10
+    add_item(p, "hp_potion", qty=2)
+    used = use_item(p, "hp_potion", CFG, quantity=5)
+    assert used == 2
+    assert p.current_hp == min(hp_max(p, CFG), 10 + 40 * 2)
+    assert all(i.item_id != "hp_potion" for i in p.inventory)
+
+
+def test_use_item_rejects_non_positive_quantity():
+    p = _player()
+    add_item(p, "hp_potion")
+    with pytest.raises(GameError, match="数量必须大于 0"):
+        use_item(p, "hp_potion", CFG, quantity=0)
 
 
 def test_use_caps_at_hp_max():

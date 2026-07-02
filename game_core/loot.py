@@ -4,7 +4,7 @@ from game_core.models import (
     Player, MonsterDef, GameConfig, InventoryItem, Buff, ItemDef,
     SoldItem, SellResult,
 )
-from game_core.errors import ItemNotFound, InvalidSlot
+from game_core.errors import GameError, ItemNotFound, InvalidSlot
 from game_core.stats import hp_max
 
 
@@ -50,7 +50,9 @@ def unequip(player: Player, item_id: str, cfg: GameConfig) -> None:
     inv.equipped = False
 
 
-def use_item(player: Player, item_id: str, cfg: GameConfig) -> None:
+def use_item(player: Player, item_id: str, cfg: GameConfig, quantity: int = 1) -> int:
+    if quantity <= 0:
+        raise GameError("数量必须大于 0")
     if item_id not in cfg.items:
         raise ItemNotFound(f"未知物品: {item_id}")
     item = cfg.items[item_id]
@@ -59,26 +61,30 @@ def use_item(player: Player, item_id: str, cfg: GameConfig) -> None:
     inv = _find(player, item_id)
     if inv is None:
         raise ItemNotFound(f"背包里没有 {item.name}")
-    if item.heal > 0:
-        player.current_hp = min(hp_max(player, cfg), player.current_hp + item.heal)
+    used = min(quantity, inv.quantity)
 
-    # 体力回复
-    if item.buff_type == "stamina":
-        player.stamina = min(cfg.balance.stamina_max,
-                             player.stamina + item.buff_value)
+    for _ in range(used):
+        if item.heal > 0:
+            player.current_hp = min(hp_max(player, cfg), player.current_hp + item.heal)
 
-    # atk/def Buff（同类型覆盖）
-    if item.buff_type in ("atk", "def"):
-        player.buffs = [b for b in player.buffs if b.type != item.buff_type]
-        player.buffs.append(Buff(
-            type=item.buff_type,
-            amount=item.buff_value,
-            steps_left=item.buff_steps,
-        ))
+        # 体力回复
+        if item.buff_type == "stamina":
+            player.stamina = min(cfg.balance.stamina_max,
+                                 player.stamina + item.buff_value)
 
-    inv.quantity -= 1
+        # atk/def Buff（同类型覆盖）
+        if item.buff_type in ("atk", "def"):
+            player.buffs = [b for b in player.buffs if b.type != item.buff_type]
+            player.buffs.append(Buff(
+                type=item.buff_type,
+                amount=item.buff_value,
+                steps_left=item.buff_steps,
+            ))
+
+    inv.quantity -= used
     if inv.quantity <= 0:
         player.inventory.remove(inv)
+    return used
 
 
 def _primary_gear_stat(item: ItemDef) -> int:

@@ -62,3 +62,15 @@ def test_buffs_no_effect_on_wrong_type():
     p.buffs.append(Buff(type="def", amount=10, steps_left=1))
     # def buff should NOT affect attack
     assert attack(p, CFG) == 12
+
+
+def test_overdrive_reduces_attack_and_defense_until_expiry():
+    p = _player(level=1)
+    p.last_active_at = 1000
+    p.overdrive_until = 1300
+    assert attack(p, CFG) == int(12 * 0.85)
+    assert defense(p, CFG) == int(7 * 0.8)
+
+    p.last_active_at = 1300
+    assert attack(p, CFG) == 12
+    assert defense(p, CFG) == 7
