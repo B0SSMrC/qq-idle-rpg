@@ -177,6 +177,57 @@ def render_sell_result(result: SellResult, gold_after: int) -> str:
     return "\n".join(lines)
 
 
+def _format_materials(materials: dict[str, int], cfg: GameConfig) -> str:
+    parts = [
+        f"{_item_name(cfg, item_id)} x{qty}"
+        for item_id, qty in materials.items()
+        if qty > 0
+    ]
+    return "、".join(parts) or "无"
+
+
+def render_dismantle_result(result, cfg: GameConfig) -> str:
+    lines = [
+        "🧩 分解完成",
+        f"分解 {result.dismantled_count} 件装备:",
+    ]
+    for entry in result.dismantled:
+        material_text = "、".join(
+            f"{_item_name(cfg, cost.item_id)} x{cost.quantity}"
+            for cost in entry.materials
+        )
+        lines.append(f"· {entry.name} x{entry.quantity} -> {material_text}")
+    lines.extend(["", f"获得材料:{_format_materials(result.materials, cfg)}"])
+    return "\n".join(lines)
+
+
+def render_enhance_result(result, cfg: GameConfig) -> str:
+    title = "🔨 强化成功" if result.success_count == 1 else "🔨 强化结算"
+    lines = [
+        title,
+        f"{result.item_name} +{result.old_level} -> +{result.new_level}",
+        f"消耗:金币 {result.gold_spent}，{_format_materials(result.materials_spent, cfg)}",
+    ]
+    if result.stop_reason:
+        lines.append(f"停止原因:{result.stop_reason}")
+    return "\n".join(lines)
+
+
+def render_star_up_result(result, cfg: GameConfig) -> str:
+    spent = []
+    if result.duplicate_spent:
+        spent.append(f"同名装备 x{result.duplicate_spent}")
+    material_text = _format_materials(result.materials_spent, cfg)
+    if material_text != "无":
+        spent.append(material_text)
+    spent.append(f"金币 {result.gold_spent}")
+    return "\n".join([
+        "⭐ 升星成功",
+        f"{result.item_name} ★{result.old_star_level} -> ★{result.new_star_level}",
+        "消耗:" + "，".join(spent),
+    ])
+
+
 def render_void_sacrifice(result, cfg: GameConfig) -> str:
     draw_counts = Counter(
         draw.item_id for draw in result.draws if getattr(draw, "item_id", None)

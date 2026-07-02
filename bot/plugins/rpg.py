@@ -36,6 +36,9 @@ from bot.formatting import (
     render_shop,
     render_inventory,
     render_sell_result,
+    render_dismantle_result,
+    render_enhance_result,
+    render_star_up_result,
     render_void_sacrifice,
     render_world_boss_attack,
     render_world_boss_status,
@@ -522,6 +525,128 @@ async def handle_sell_gear(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 装备养成
+# ---------------------------------------------------------------------------
+
+cmd_dismantle_gear = on_command(
+    "分解装备",
+    aliases={"一键分解装备", "分解武器", "分解防具"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+def _dismantle_filter_from_text(text: str) -> str:
+    if "武器" in text:
+        return "weapon"
+    if "防具" in text:
+        return "armor"
+    return "all"
+
+
+async def _handle_dismantle_gear_arg(bot: Bot, event: Event, slot_filter: str):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result, p = services.do_dismantle_gear(
+                state.conn(), state.CFG, gid, uid, slot_filter or "all"
+            )
+            await _reply_to(bot, event, p.name, render_dismantle_result(result, state.CFG))
+
+    await _guard(bot, event, _do())
+
+
+@cmd_dismantle_gear.handle()
+async def handle_dismantle_gear(bot: Bot, event: Event):
+    await _handle_dismantle_gear_arg(
+        bot,
+        event,
+        _dismantle_filter_from_text(event.get_plaintext()),
+    )
+
+
+def _parse_slot_count_arg(arg: str) -> tuple[str, int]:
+    parts = str(arg).split()
+    if not parts:
+        return "", 1
+    if len(parts) == 1:
+        text = parts[0]
+        digits = ""
+        while text and text[-1].isdigit():
+            digits = text[-1] + digits
+            text = text[:-1]
+        if digits and text:
+            return text, int(digits)
+        return parts[0], 1
+    return parts[0], int(parts[1])
+
+
+cmd_enhance_gear = on_command("强化", rule=to_me(), priority=10, block=True)
+
+
+async def _handle_enhance_gear_arg(bot: Bot, event: Event, arg: str):
+    try:
+        slot_query, times = _parse_slot_count_arg(arg)
+    except ValueError:
+        await _reply(bot, event, "次数必须是正整数")
+        return
+    if times <= 0:
+        await _reply(bot, event, "次数必须是正整数")
+        return
+
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_enhance_equipped(
+                state.conn(), state.CFG, gid, uid, slot_query, times, state.now()
+            )
+            p = repo.get_player(state.conn(), gid, uid)
+            await _reply_to(
+                bot,
+                event,
+                p.name,
+                render_enhance_result(result, state.CFG) + "\n" + render_status(p, state.CFG),
+            )
+
+    await _guard(bot, event, _do())
+
+
+@cmd_enhance_gear.handle()
+async def handle_enhance_gear(bot: Bot, event: Event):
+    await _handle_enhance_gear_arg(bot, event, _arg(event, "强化"))
+
+
+cmd_star_up_gear = on_command("升星", rule=to_me(), priority=10, block=True)
+
+
+async def _handle_star_up_gear_arg(bot: Bot, event: Event, arg: str):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result = services.do_star_up_equipped(
+                state.conn(), state.CFG, gid, uid, arg, state.now()
+            )
+            p = repo.get_player(state.conn(), gid, uid)
+            await _reply_to(
+                bot,
+                event,
+                p.name,
+                render_star_up_result(result, state.CFG) + "\n" + render_status(p, state.CFG),
+            )
+
+    await _guard(bot, event, _do())
+
+
+@cmd_star_up_gear.handle()
+async def handle_star_up_gear(bot: Bot, event: Event):
+    await _handle_star_up_gear_arg(bot, event, _arg(event, "升星"))
+
+
+# ---------------------------------------------------------------------------
 # 世界Boss
 # ---------------------------------------------------------------------------
 
@@ -805,6 +930,12 @@ async def handle_fuzzy(bot: Bot, event: Event):
         await _handle_buy_item(bot, event, parsed.arg)
     elif parsed.command == "sell_gear":
         await handle_sell_gear(bot, event)
+    elif parsed.command == "dismantle_gear":
+        await _handle_dismantle_gear_arg(bot, event, parsed.arg or "all")
+    elif parsed.command == "enhance_gear":
+        await _handle_enhance_gear_arg(bot, event, parsed.arg)
+    elif parsed.command == "star_up_gear":
+        await _handle_star_up_gear_arg(bot, event, parsed.arg)
     elif parsed.command == "void_sacrifice":
         await _handle_void_sacrifice_arg(bot, event, parsed.arg)
     elif parsed.command == "world_boss_status":
