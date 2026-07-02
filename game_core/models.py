@@ -95,6 +95,8 @@ class InventoryItem:
     equipped: bool = False
     affix: str = ""
     source: str = ""
+    enhance_level: int = 0
+    star_level: int = 0
 
 
 @dataclass

@@ -88,6 +88,23 @@ def test_save_and_load_inventory_source():
     assert loaded.inventory[0].source == "void_sacrifice"
 
 
+def test_save_and_load_inventory_growth_fields():
+    conn = _conn()
+    p = create_player(conn, _player())
+    p.inventory.append(InventoryItem(
+        item_id="iron_sword",
+        quantity=1,
+        equipped=True,
+        enhance_level=7,
+        star_level=2,
+    ))
+    save_player(conn, p)
+
+    loaded = get_player(conn, "g", "u")
+    assert loaded.inventory[0].enhance_level == 7
+    assert loaded.inventory[0].star_level == 2
+
+
 def test_list_group_players_is_group_scoped():
     conn = _conn()
     create_player(conn, _player(group="g1", user="a", name="A"))

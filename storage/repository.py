@@ -27,7 +27,8 @@ def _row_to_player(conn, row: sqlite3.Row, inv_rows: list[sqlite3.Row]) -> Playe
     p.inventory = [
         InventoryItem(item_id=r["item_id"], quantity=r["quantity"],
                       equipped=bool(r["equipped"]), affix=r["affix"],
-                      source=r["source"])
+                      source=r["source"], enhance_level=r["enhance_level"],
+                      star_level=r["star_level"])
         for r in inv_rows
     ]
     p.buffs = _load_buffs(conn, row["id"])
@@ -93,10 +94,10 @@ def _save_inventory(conn: sqlite3.Connection, player: Player) -> None:
     conn.execute("DELETE FROM inventory WHERE player_id=?", (player.id,))
     for it in player.inventory:
         conn.execute(
-            "INSERT INTO inventory (player_id,item_id,quantity,equipped,affix,source) "
-            "VALUES (?,?,?,?,?,?)",
+            "INSERT INTO inventory (player_id,item_id,quantity,equipped,affix,source,enhance_level,star_level) "
+            "VALUES (?,?,?,?,?,?,?,?)",
             (player.id, it.item_id, it.quantity, int(it.equipped), it.affix,
-             it.source))
+             it.source, it.enhance_level, it.star_level))
 
 
 def list_group_players(conn: sqlite3.Connection, group_id: str) -> list[Player]:
