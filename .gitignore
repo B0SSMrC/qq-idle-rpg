@@ -18,6 +18,9 @@ venv/
 *.db-wal
 *.sqlite3
 
+# Runtime generated files
+runtime/inventory_images/
+
 # IDE
 .idea/
 .vscode/

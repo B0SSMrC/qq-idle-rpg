@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+from pathlib import Path
 
 import nonebot
 from nonebot import on_command, on_message
@@ -17,10 +18,12 @@ from nonebot.adapters import Bot, Event
 try:
     from nonebot.adapters.onebot.v11 import (
         GroupMessageEvent as OneBotGroupMessageEvent,
+        MessageSegment,
         PrivateMessageEvent as OneBotPrivateMessageEvent,
     )
 except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
     OneBotGroupMessageEvent = OneBotPrivateMessageEvent = None
+    MessageSegment = None
 
 import bot.state as state
 from app import services
@@ -36,6 +39,11 @@ from bot.formatting import (
     render_void_sacrifice,
     render_world_boss_attack,
     render_world_boss_status,
+)
+from bot.inventory_image import (
+    INVENTORY_IMAGE_DIR,
+    cleanup_inventory_images,
+    render_inventory_images,
 )
 from bot.reply_templates import UNKNOWN_COMMAND_REPLIES
 from game_core.affixes import format_affix
@@ -80,6 +88,22 @@ async def _reply(bot: Bot, event: Event, text: str):
 async def _reply_to(bot: Bot, event: Event, name: str, text: str):
     """给回复加上角色名前缀，群聊里一眼看出在回复谁。"""
     return await bot.send(event, f"「{name}」\n{text}")
+
+
+async def _reply_inventory(bot: Bot, event: Event, player):
+    if MessageSegment is None:
+        await _reply_to(bot, event, player.name, render_inventory(player, state.CFG))
+        return
+    try:
+        output_dir = Path(INVENTORY_IMAGE_DIR)
+        image_paths = render_inventory_images(player, state.CFG, output_dir, now=state.now())
+        cleanup_inventory_images(output_dir, now=state.now())
+        await _reply_to(bot, event, player.name, "背包已整理成图片：")
+        for path in image_paths:
+            await bot.send(event, MessageSegment.image(path.resolve().as_uri()))
+    except Exception:
+        logger.exception("背包图片发送失败，回退到文字背包")
+        await _reply_to(bot, event, player.name, render_inventory(player, state.CFG))
 
 
 async def _guard(bot: Bot, event: Event, coro):
@@ -177,7 +201,7 @@ async def handle_inventory(bot: Bot, event: Event):
             if p is None:
                 await _reply(bot, event, "你还没有角色,先发「注册 角色名」吧~")
                 return
-            await _reply_to(bot, event, p.name, render_inventory(p, state.CFG))
+            await _reply_inventory(bot, event, p)
 
     await _guard(bot, event, _do())
 
