@@ -104,6 +104,13 @@ def rpg_buy(world_id: str, player_id: str, item: str) -> dict:
 
 
 @mcp.tool()
+def rpg_sell_unequipped_gear(world_id: str, player_id: str) -> dict:
+    """一键出售所有未装备的武器和防具。已装备物品与消耗品会保留。"""
+    with _lock:
+        return handlers.h_sell_unequipped_gear(_conn, _cfg, world_id, player_id)
+
+
+@mcp.tool()
 def rpg_ranking(world_id: str, key: str = "level", limit: int = 10) -> dict:
     """查看本世界(world_id)排行榜。key="level" 等级榜,key="depth" 最深层榜。"""
     with _lock:

@@ -1,6 +1,9 @@
 from __future__ import annotations
 import random
-from game_core.models import Player, MonsterDef, GameConfig, InventoryItem, Buff
+from game_core.models import (
+    Player, MonsterDef, GameConfig, InventoryItem, Buff, ItemDef,
+    SoldItem, SellResult,
+)
 from game_core.errors import ItemNotFound, InvalidSlot
 from game_core.stats import hp_max
 
@@ -76,3 +79,76 @@ def use_item(player: Player, item_id: str, cfg: GameConfig) -> None:
     inv.quantity -= 1
     if inv.quantity <= 0:
         player.inventory.remove(inv)
+
+
+def _primary_gear_stat(item: ItemDef) -> int:
+    if item.slot == "weapon":
+        return item.atk
+    if item.slot == "armor":
+        return item.defense
+    return 0
+
+
+def _lower_priced_gear(item: ItemDef, cfg: GameConfig) -> ItemDef | None:
+    stat = _primary_gear_stat(item)
+    candidates = [
+        other for other in cfg.items.values()
+        if other.slot == item.slot
+        and other.price is not None
+        and 0 < _primary_gear_stat(other) < stat
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda other: (_primary_gear_stat(other), other.price or 0))
+
+
+def _gear_sale_unit_price(item: ItemDef, cfg: GameConfig) -> int | None:
+    if item.price is not None:
+        return max(1, int(item.price * 0.8))
+
+    lower = _lower_priced_gear(item, cfg)
+    if lower is None or lower.price is None:
+        return None
+
+    lower_stat = _primary_gear_stat(lower)
+    if lower_stat <= 0:
+        return None
+
+    if item.slot == "weapon":
+        raw_price = item.atk / lower_stat * lower.price * 2.7
+    elif item.slot == "armor":
+        raw_price = item.defense / lower_stat * 35 * lower.price
+    else:
+        return None
+    return max(1, int(raw_price))
+
+
+def sell_unequipped_gear(player: Player, cfg: GameConfig) -> SellResult:
+    sold_items: list[SoldItem] = []
+    kept_inventory: list[InventoryItem] = []
+    total_gold = 0
+
+    for inv in player.inventory:
+        item = cfg.items.get(inv.item_id)
+        if inv.equipped or item is None or item.slot not in ("weapon", "armor"):
+            kept_inventory.append(inv)
+            continue
+
+        unit_price = _gear_sale_unit_price(item, cfg)
+        if unit_price is None or inv.quantity <= 0:
+            kept_inventory.append(inv)
+            continue
+
+        total_price = unit_price * inv.quantity
+        total_gold += total_price
+        sold_items.append(SoldItem(
+            item_id=item.id,
+            name=item.name,
+            quantity=inv.quantity,
+            unit_price=unit_price,
+            total_price=total_price,
+        ))
+
+    player.inventory = kept_inventory
+    player.gold += total_gold
+    return SellResult(sold_items=sold_items, total_gold=total_gold)

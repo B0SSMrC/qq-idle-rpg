@@ -1,9 +1,12 @@
 from pathlib import Path
 from game_core.config import load_config
-from game_core.models import Player, InventoryItem, ExploreResult, StepLog
+from game_core.models import (
+    Player, InventoryItem, ExploreResult, StepLog, SellResult, SoldItem,
+)
 from game_core.stats import hp_max
 from bot.formatting import (
     render_explore, render_status, render_ranking, render_shop, render_inventory,
+    render_sell_result,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -87,3 +90,20 @@ def test_render_inventory_empty():
     p = _player()
     p.inventory = []
     assert "空" in render_inventory(p, CFG)
+
+
+def test_render_sell_result_lists_total_and_items():
+    result = SellResult(sold_items=[
+        SoldItem(item_id="iron_sword", name="Iron Sword", quantity=2,
+                 unit_price=40, total_price=80),
+    ], total_gold=80)
+    text = render_sell_result(result, gold_after=392)
+    assert "80" in text
+    assert "392" in text
+    assert "Iron Sword" in text
+    assert "x2" in text
+
+
+def test_render_sell_result_empty():
+    text = render_sell_result(SellResult(), gold_after=312)
+    assert "312" in text

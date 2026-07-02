@@ -96,6 +96,21 @@ class InventoryItem:
 
 
 @dataclass
+class SoldItem:
+    item_id: str
+    name: str
+    quantity: int
+    unit_price: int
+    total_price: int
+
+
+@dataclass
+class SellResult:
+    sold_items: list[SoldItem] = field(default_factory=list)
+    total_gold: int = 0
+
+
+@dataclass
 class Player:
     group_id: str
     user_id: str

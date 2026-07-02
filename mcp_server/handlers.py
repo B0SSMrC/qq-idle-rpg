@@ -129,6 +129,22 @@ def _player_action(fn, conn, cfg, world_id, player_id, item) -> dict:
     return {"ok": True, "player": player_view(p, cfg)}
 
 
+def _sell_result_view(result) -> dict:
+    return {
+        "total_gold": result.total_gold,
+        "sold_items": [
+            {
+                "item_id": item.item_id,
+                "name": item.name,
+                "qty": item.quantity,
+                "unit_price": item.unit_price,
+                "total_price": item.total_price,
+            }
+            for item in result.sold_items
+        ],
+    }
+
+
 @_safe
 def h_equip(conn, cfg, world_id, player_id, item) -> dict:
     return _player_action(services.do_equip, conn, cfg, world_id, player_id, item)
@@ -147,6 +163,12 @@ def h_use(conn, cfg, world_id, player_id, item) -> dict:
 @_safe
 def h_buy(conn, cfg, world_id, player_id, item) -> dict:
     return _player_action(services.do_buy, conn, cfg, world_id, player_id, item)
+
+
+@_safe
+def h_sell_unequipped_gear(conn, cfg, world_id, player_id) -> dict:
+    result, p = services.do_sell_unequipped_gear(conn, cfg, world_id, player_id)
+    return {"ok": True, "result": _sell_result_view(result), "player": player_view(p, cfg)}
 
 
 @_safe

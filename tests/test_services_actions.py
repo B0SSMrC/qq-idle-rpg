@@ -7,7 +7,8 @@ from game_core.config import load_config
 from game_core.models import InventoryItem
 from game_core.errors import NotEnoughGold, ItemNotFound, CharacterNotFound
 from app.services import (
-    register, do_explore, do_equip, do_use, do_buy, get_ranking,
+    register, do_explore, do_equip, do_use, do_buy,
+    do_sell_unequipped_gear, get_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -71,6 +72,29 @@ def test_do_use_potion():
     after = repo.get_player(conn, "g", "u")
     assert after.current_hp == 50                 # 10 + 40
     assert all(i.item_id != "hp_potion" for i in after.inventory)
+
+
+def test_do_sell_unequipped_gear_persists_gold_and_inventory():
+    conn = _conn()
+    register(conn, CFG, "g", "u", "灏忔槑", now=0)
+    p = repo.get_player(conn, "g", "u")
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", quantity=2),
+        InventoryItem(item_id="fine_steel_sword", quantity=1, equipped=True),
+        InventoryItem(item_id="hp_potion", quantity=3),
+    ]
+    repo.save_player(conn, p)
+
+    result, sold_player = do_sell_unequipped_gear(conn, CFG, "g", "u")
+
+    assert result.total_gold == 80
+    assert sold_player.gold == 80
+    reloaded = repo.get_player(conn, "g", "u")
+    assert reloaded.gold == 80
+    assert [(i.item_id, i.quantity, i.equipped) for i in reloaded.inventory] == [
+        ("fine_steel_sword", 1, True),
+        ("hp_potion", 3, False),
+    ]
 
 
 def test_get_ranking_group_scoped_and_sorted():

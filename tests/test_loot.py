@@ -3,7 +3,9 @@ import pytest
 from pathlib import Path
 from game_core.config import load_config
 from game_core.models import Player, InventoryItem, MonsterDef, DropDef, Buff
-from game_core.loot import roll_drops, add_item, equip, unequip, use_item
+from game_core.loot import (
+    roll_drops, add_item, equip, unequip, use_item, sell_unequipped_gear,
+)
 from game_core.stats import hp_max
 from game_core.errors import ItemNotFound, InvalidSlot
 
@@ -120,3 +122,49 @@ def test_use_stamina_potion_caps_at_max():
     add_item(p, "stamina_potion")
     use_item(p, "stamina_potion", CFG)
     assert p.stamina == CFG.balance.stamina_max
+
+
+def test_sell_unequipped_gear_sells_only_weapons_and_armor_with_price():
+    p = _player()
+    p.gold = 10
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", quantity=2),
+        InventoryItem(item_id="fine_steel_sword", quantity=1, equipped=True),
+        InventoryItem(item_id="hp_potion", quantity=3),
+    ]
+
+    result = sell_unequipped_gear(p, CFG)
+
+    assert result.total_gold == 80
+    assert p.gold == 90
+    assert [(i.item_id, i.quantity, i.equipped) for i in p.inventory] == [
+        ("fine_steel_sword", 1, True),
+        ("hp_potion", 3, False),
+    ]
+    assert [(s.item_id, s.quantity, s.unit_price) for s in result.sold_items] == [
+        ("iron_sword", 2, 40),
+    ]
+
+
+def test_sell_unequipped_gear_prices_legendary_weapon_from_lower_weapon():
+    p = _player()
+    p.inventory = [InventoryItem(item_id="green_dragon_blade", quantity=1)]
+
+    result = sell_unequipped_gear(p, CFG)
+
+    assert result.total_gold == 2570
+    assert p.gold == 2570
+    assert p.inventory == []
+    assert result.sold_items[0].unit_price == 2570
+
+
+def test_sell_unequipped_gear_prices_legendary_armor_from_lower_armor():
+    p = _player()
+    p.inventory = [InventoryItem(item_id="diamond_body_armor", quantity=1)]
+
+    result = sell_unequipped_gear(p, CFG)
+
+    assert result.total_gold == 54880
+    assert p.gold == 54880
+    assert p.inventory == []
+    assert result.sold_items[0].unit_price == 54880

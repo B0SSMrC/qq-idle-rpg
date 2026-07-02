@@ -50,6 +50,7 @@ from bot.formatting import (
     render_ranking,
     render_shop,
     render_inventory,
+    render_sell_result,
 )
 from game_core.errors import GameError
 from storage import repository as repo
@@ -303,6 +304,31 @@ async def handle_buy(bot: Bot, event: Event):
 
 
 # ---------------------------------------------------------------------------
+# 出售装备
+# ---------------------------------------------------------------------------
+
+cmd_sell_gear = on_command(
+    "出售装备",
+    aliases={"一键出售", "清理装备"},
+    rule=to_me(),
+    priority=10,
+    block=True,
+)
+
+
+@cmd_sell_gear.handle()
+async def handle_sell_gear(bot: Bot, event: Event):
+    gid, uid = _scope(event)
+
+    async def _do():
+        async with state.player_lock(gid, uid):
+            result, p = services.do_sell_unequipped_gear(state.conn(), state.CFG, gid, uid)
+            await _reply_to(bot, event, p.name, render_sell_result(result, p.gold))
+
+    await _guard(bot, event, _do())
+
+
+# ---------------------------------------------------------------------------
 # 排行榜 / 排名
 # ---------------------------------------------------------------------------
 
@@ -338,6 +364,7 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 使用 <物品>   — 使用消耗品(药水/丹药/符箓)
 商店         — 查看商店
 购买 <物品>   — 购买物品
+出售装备      — 一键出售未装备武器/防具
 排行榜       — 等级榜
 排行榜 深度   — 深度榜
 ──────────────

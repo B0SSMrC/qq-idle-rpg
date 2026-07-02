@@ -5,7 +5,8 @@ from storage import repository as repo
 from game_core.config import load_config
 from game_core.models import InventoryItem
 from mcp_server.handlers import (
-    h_register, h_explore, h_equip, h_use, h_buy, h_shop, h_ranking,
+    h_register, h_explore, h_equip, h_use, h_buy, h_sell_unequipped_gear,
+    h_shop, h_ranking,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -70,6 +71,25 @@ def test_use_potion():
     res = h_use(conn, CFG, "w", "u", "金疮药")
     assert res["ok"] is True
     assert res["player"]["hp"] == 50           # 10 + 40
+
+
+def test_sell_unequipped_gear_handler():
+    conn = _conn()
+    h_register(conn, CFG, "w", "u", "Player", now=0)
+    p = repo.get_player(conn, "w", "u")
+    p.inventory = [
+        InventoryItem(item_id="iron_sword", quantity=2),
+        InventoryItem(item_id="fine_steel_sword", quantity=1, equipped=True),
+        InventoryItem(item_id="hp_potion", quantity=3),
+    ]
+    repo.save_player(conn, p)
+
+    res = h_sell_unequipped_gear(conn, CFG, "w", "u")
+
+    assert res["ok"] is True
+    assert res["result"]["total_gold"] == 80
+    assert res["player"]["gold"] == 80
+    assert res["result"]["sold_items"][0]["item_id"] == "iron_sword"
 
 
 def test_shop_lists_items():

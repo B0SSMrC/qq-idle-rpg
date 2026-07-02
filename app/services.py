@@ -83,6 +83,13 @@ def do_buy(conn, cfg, group_id, user_id, item_query) -> Player:
     return p
 
 
+def do_sell_unequipped_gear(conn, cfg, group_id, user_id):
+    p = _require(conn, cfg, group_id, user_id)
+    result = _loot.sell_unequipped_gear(p, cfg)
+    repo.save_player(conn, p)
+    return result, p
+
+
 def shop_list(cfg) -> list[ItemDef]:
     return _shop.list_shop(cfg)
 

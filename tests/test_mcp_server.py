@@ -7,7 +7,7 @@ from mcp_server import server
 EXPECTED_TOOLS = {
     "rpg_register", "rpg_status", "rpg_inventory", "rpg_explore",
     "rpg_equip", "rpg_unequip", "rpg_use_item", "rpg_shop",
-    "rpg_buy", "rpg_ranking",
+    "rpg_buy", "rpg_sell_unequipped_gear", "rpg_ranking",
 }
 
 

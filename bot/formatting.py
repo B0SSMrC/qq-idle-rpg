@@ -1,6 +1,6 @@
 from __future__ import annotations
 import random
-from game_core.models import Player, ExploreResult, GameConfig
+from game_core.models import Player, ExploreResult, GameConfig, SellResult
 from game_core.stats import hp_max, attack, defense, power
 
 COMBAT_WIN_TEMPLATES = [
@@ -66,6 +66,23 @@ def render_status(player: Player, cfg: GameConfig) -> str:
         for b in player.buffs:
             icon = "⚔️攻击" if b.type == "atk" else "🛡️防御"
             lines.append(f"  {icon}+{b.amount}  (剩余{b.steps_left}步)")
+    return "\n".join(lines)
+
+
+def render_sell_result(result: SellResult, gold_after: int) -> str:
+    lines = ["💰 一键出售结算"]
+    if not result.sold_items:
+        lines.append("没有可出售的未装备武器/防具。")
+    else:
+        count = sum(item.quantity for item in result.sold_items)
+        lines.append(f"售出 {count} 件装备，获得 {result.total_gold} 金币")
+        lines.append("──────────────")
+        for item in result.sold_items:
+            lines.append(
+                f"· {item.name} x{item.quantity}  "
+                f"{item.unit_price}/件 = {item.total_price}"
+            )
+    lines.append(f"当前金币: {gold_after}")
     return "\n".join(lines)
 
 
