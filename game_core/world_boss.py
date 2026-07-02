@@ -16,6 +16,9 @@ CONSUMABLE_REWARD_POOL = [
     "supreme_hp_potion",
     "atk_potion_major",
     "def_potion_major",
+    "black_iron",
+    "star_meteorite",
+    "divine_forge_crystal",
 ]
 
 MID_HIGH_GEAR_POOL = [
