@@ -14,6 +14,8 @@ MATERIAL_ITEM_IDS = {
     "divine_forge_crystal",
 }
 
+SUPPORTED_EQUIPMENT_SLOTS = {"weapon", "armor"}
+
 ENHANCE_CAPS = {
     "common": 5,
     "uncommon": 8,
@@ -99,6 +101,8 @@ class StarUpResult:
 
 
 def _equipped(player: Player, cfg: GameConfig, slot: str) -> tuple[InventoryItem, ItemDef]:
+    if slot not in SUPPORTED_EQUIPMENT_SLOTS:
+        raise GameError(f"不支持的装备槽位: {slot}")
     for inv in player.inventory:
         item = cfg.items.get(inv.item_id)
         if inv.equipped and item is not None and item.slot == slot:

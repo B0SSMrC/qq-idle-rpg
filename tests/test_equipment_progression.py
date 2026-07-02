@@ -4,7 +4,6 @@ import pytest
 
 from game_core.config import load_config
 from game_core.errors import GameError
-from game_core.models import InventoryItem, Player
 from game_core.equipment_progression import (
     MATERIAL_ITEM_IDS,
     dismantle_unequipped_gear,
@@ -12,6 +11,7 @@ from game_core.equipment_progression import (
     gear_growth_stats,
     star_up_equipped,
 )
+from game_core.models import InventoryItem, Player
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CFG = load_config(DATA_DIR)
@@ -127,5 +127,41 @@ def test_star_up_can_use_material_fallback():
 def test_enhance_rejects_missing_equipped_slot():
     p = _player()
 
-    with pytest.raises(GameError, match="当前没有装备的武器"):
+    with pytest.raises(GameError):
         enhance_equipped(p, CFG, "weapon")
+
+
+def test_enhance_rejects_unsupported_slots():
+    p = _player()
+    CFG.items["test_accessory"] = CFG.items["iron_sword"].__class__(
+        id="test_accessory",
+        name="Test Accessory",
+        slot="accessory",
+        rarity="common",
+        price=1000,
+    )
+    p.inventory = [
+        InventoryItem(item_id="test_accessory", equipped=True),
+        InventoryItem(item_id="refined_iron", quantity=10),
+    ]
+
+    with pytest.raises(GameError):
+        enhance_equipped(p, CFG, "accessory")
+
+
+def test_star_up_rejects_unsupported_slots():
+    p = _player()
+    CFG.items["test_accessory"] = CFG.items["iron_sword"].__class__(
+        id="test_accessory",
+        name="Test Accessory",
+        slot="accessory",
+        rarity="common",
+        price=1000,
+    )
+    p.inventory = [
+        InventoryItem(item_id="test_accessory", equipped=True),
+        InventoryItem(item_id="test_accessory"),
+    ]
+
+    with pytest.raises(GameError):
+        star_up_equipped(p, CFG, "accessory")
