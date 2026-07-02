@@ -1783,12 +1783,12 @@ git commit -m "test: 引擎端到端冒烟(完整角色生命周期)"
 - [ ] 能在 `python` REPL 里:`load_config` → `make_new_player` → `explore` → `buy`/`equip` → `rank_players` 全程跑通。
 - [ ] `game_core/` 下任何模块都没有 `import nonebot` / 没有 SQLite / 没有中文消息排版。
 
-完成后进入**计划二:存储(SQLite 仓储)+ 机器人接入(formatting / NoneBot2 插件 / 沙箱联调)**。
+完成后进入**计划二:存储(SQLite 仓储)+ 机器人接入(formatting / NoneBot2 插件 / OneBot 联调)**。
 
 ---
 
 ## 非目标(本计划不做)
 
 - SQLite 持久化、仓储层(计划二)
-- 中文消息格式化、NoneBot 指令插件、沙箱部署(计划二)
+- 中文消息格式化、NoneBot 指令插件、OneBot 部署(计划二)
 - 战力榜、PvP、组队、手写剧情(v2+)

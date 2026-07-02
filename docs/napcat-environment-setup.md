@@ -1,38 +1,38 @@
-# NapCat 普通 QQ 号环境配置
+# NapCat OneBot v11 环境配置
 
-本文档面向 Windows 下的 NapCat Shell 包，示例路径:
+本文档面向 Windows 下的 NapCat Shell 包，示例路径：
 
 ```text
 D:\QQBot\NapCat.Shell
 ```
 
-目标链路:
+目标链路：
 
 ```text
-QQ群消息
-  → NapCat 普通 QQ 号
-  → OneBot v11 反向 WebSocket
-  → NoneBot
-  → qq-idle-rpg 游戏逻辑
-  → QQ 群回复
+QQ 群消息
+  -> NapCat 普通 QQ 号
+  -> OneBot v11 反向 WebSocket
+  -> NoneBot2
+  -> qq-idle-rpg 游戏逻辑
+  -> QQ 群回复
 ```
 
 ## 1. 准备项目环境
 
-在 RPG 项目目录安装依赖:
+在 RPG 项目目录安装依赖：
 
 ```bash
 cd "D:\Claude Code\qq-idle-rpg"
 python -m pip install -e ".[dev]"
 ```
 
-复制 OneBot 配置模板:
+复制 OneBot 配置模板：
 
 ```bash
 copy .env.onebot.example .env
 ```
 
-默认 `.env.onebot.example` 内容会让 NoneBot 监听本机 `8080` 端口:
+默认 `.env.onebot.example` 会让 NoneBot 监听本机 `8080` 端口：
 
 ```dotenv
 DRIVER=~fastapi+~websockets
@@ -44,13 +44,13 @@ NICKNAME=["挂机RPG"]
 
 ## 2. 启动 RPG Bot
 
-在 RPG 项目目录运行:
+在 RPG 项目目录运行：
 
 ```bash
 python -m bot.__main_onebot__
 ```
 
-保持这个窗口运行。看到插件加载成功即可，例如:
+保持这个窗口运行。看到插件加载成功即可，例如：
 
 ```text
 Succeeded to load plugin "rpg" from "bot.plugins.rpg"
@@ -58,19 +58,19 @@ Succeeded to load plugin "rpg" from "bot.plugins.rpg"
 
 ## 3. 配置 NapCat OneBot v11
 
-账号配置文件通常位于:
+账号配置文件通常位于：
 
 ```text
 D:\QQBot\NapCat.Shell\config\onebot11_<QQ号>.json
 ```
 
-例如:
+例如：
 
 ```text
 D:\QQBot\NapCat.Shell\config\onebot11_2373037274.json
 ```
 
-把 `network.websocketClients` 配置为连接 RPG Bot:
+把 `network.websocketClients` 配置为连接 RPG Bot：
 
 ```json
 {
@@ -107,19 +107,19 @@ D:\QQBot\NapCat.Shell\config\onebot11_2373037274.json
 }
 ```
 
-也可以通过 NapCat WebUI 配置:
+也可以通过 NapCat WebUI 配置：
 
 ```text
 http://127.0.0.1:6099
 ```
 
-WebUI token 在:
+WebUI token 在：
 
 ```text
 D:\QQBot\NapCat.Shell\config\webui.json
 ```
 
-进入 WebUI 后，新增网络配置:
+新增网络配置：
 
 ```text
 类型: Websocket客户端
@@ -135,13 +135,13 @@ Token: 留空
 
 ## 4. 启动 NapCat
 
-在 NapCat 目录运行:
+在 NapCat 目录运行：
 
 ```text
 D:\QQBot\NapCat.Shell\launcher-user.bat
 ```
 
-推荐启动顺序:
+推荐启动顺序：
 
 1. 先启动 `python -m bot.__main_onebot__`
 2. 再启动 NapCat
@@ -150,7 +150,7 @@ D:\QQBot\NapCat.Shell\launcher-user.bat
 
 ## 5. 群里测试
 
-在 QQ 群里发送:
+在 QQ 群里发送：
 
 ```text
 @机器人 注册 小明
@@ -159,10 +159,11 @@ D:\QQBot\NapCat.Shell\launcher-user.bat
 @机器人 背包
 @机器人 商店
 @机器人 购买 金疮药
+@机器人 出售装备
 @机器人 排行榜
 ```
 
-私聊可直接发送:
+私聊可直接发送：
 
 ```text
 注册 小明
@@ -178,23 +179,23 @@ D:\QQBot\NapCat.Shell\launcher-user.bat
 
 ### RPG Bot 没看到 NapCat 连接
 
-检查:
+检查：
 
 - `python -m bot.__main_onebot__` 是否正在运行
 - `.env` 里的 `PORT` 是否为 `8080`
-- NapCat 的 WebSocket URL 是否是 `ws://127.0.0.1:8080/onebot/v11/ws`
+- NapCat 的 WebSocket URL 是否为 `ws://127.0.0.1:8080/onebot/v11/ws`
 - 防火墙是否阻止本地连接
 
 ### NapCat 和 RPG Bot 不在同一台机器
 
-RPG Bot 的 `.env` 改为:
+RPG Bot 的 `.env` 改为：
 
 ```dotenv
 HOST=0.0.0.0
 PORT=8080
 ```
 
-NapCat 的 URL 改为:
+NapCat 的 URL 改为：
 
 ```text
 ws://你的服务器IP:8080/onebot/v11/ws
@@ -202,14 +203,10 @@ ws://你的服务器IP:8080/onebot/v11/ws
 
 ### 改代码后没生效
 
-重启 RPG Bot:
+重启 RPG Bot：
 
 ```bash
 python -m bot.__main_onebot__
 ```
 
 通常不需要重启 NapCat，除非修改了 NapCat 自己的配置。
-
-## 7. 风险说明
-
-普通 QQ 号 + NapCat 方案适合自用和小范围内测，不是 QQ 开放平台官方机器人路径。长期公开运营建议保留 QQ 官方机器人接入方式。

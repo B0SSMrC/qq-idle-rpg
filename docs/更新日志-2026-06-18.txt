@@ -126,7 +126,6 @@ QQ挂机RPG 游戏内容扩展更新 — 2026/06/18
 
 十一、部署提示
 ---------------
-  MCP Server（OpenClaw）和QQ Bot（NoneBot2）是独立进程，
-  更新代码后均需重启:
-    openclaw restart      （反正要重启Gateway的话）
-    python -m bot          （Bot端重启）
+  OneBot 协议端和 RPG Bot（NoneBot2）是独立进程，
+  更新 RPG 代码后需重启:
+    python -m bot.__main_onebot__

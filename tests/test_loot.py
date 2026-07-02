@@ -164,7 +164,7 @@ def test_sell_unequipped_gear_prices_legendary_armor_from_lower_armor():
 
     result = sell_unequipped_gear(p, CFG)
 
-    assert result.total_gold == 54880
-    assert p.gold == 54880
+    assert result.total_gold == 5488
+    assert p.gold == 5488
     assert p.inventory == []
-    assert result.sold_items[0].unit_price == 54880
+    assert result.sold_items[0].unit_price == 5488

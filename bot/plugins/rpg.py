@@ -1,20 +1,8 @@
-"""RPG 命令插件 — 兼容 QQ 官方适配器与 OneBot v11。
+"""RPG command plugin for OneBot v11.
 
-已验证的适配器 API (nonebot-adapter-qq 1.7.1):
-  事件类:
-    C2CMessageCreateEvent      单聊(私信)   user = author.user_openid
-    GroupAtMessageCreateEvent  群 @消息       user = author.member_openid,group = group_openid
-    AtMessageCreateEvent       频道 @消息     user = author.id,            guild = guild_id
-  三者都有 event.get_user_id() 与 event.to_me;回复统一 await bot.send(event, text)。
-
-「世界/排行榜范围」(对应存档的 group_id):
-  群   → group_openid
-  单聊 → 常量 "c2c"(同一私聊世界,所有私聊玩家同榜)
-  频道 → "guild_{guild_id}"(同一频道服务器同榜)
-
-OneBot v11:
-  群聊 → group_id
-  私聊 → 常量 "private"
+Identity mapping:
+- Group chat: group_id = OneBot group_id, user_id = OneBot user_id
+- Private chat: group_id = "private", user_id = OneBot user_id
 """
 from __future__ import annotations
 
@@ -24,15 +12,6 @@ import nonebot
 from nonebot import on_command, on_message
 from nonebot.rule import to_me
 from nonebot.adapters import Bot, Event
-
-try:
-    from nonebot.adapters.qq import (
-        GroupAtMessageCreateEvent,
-        C2CMessageCreateEvent,
-        AtMessageCreateEvent,
-    )
-except ImportError:  # pragma: no cover - 取决于部署时启用的适配器
-    GroupAtMessageCreateEvent = C2CMessageCreateEvent = AtMessageCreateEvent = None
 
 try:
     from nonebot.adapters.onebot.v11 import (
@@ -66,12 +45,6 @@ logger = nonebot.log.logger
 def _scope(event: Event) -> tuple[str, str]:
     """返回 (group_id, user_id):group_id 是排行榜/世界范围,因事件类型而异。"""
     uid = event.get_user_id()
-    if GroupAtMessageCreateEvent and isinstance(event, GroupAtMessageCreateEvent):
-        return event.group_openid, uid
-    if AtMessageCreateEvent and isinstance(event, AtMessageCreateEvent):
-        return f"guild_{event.guild_id}", uid
-    if C2CMessageCreateEvent and isinstance(event, C2CMessageCreateEvent):
-        return "c2c", uid
     if OneBotGroupMessageEvent and isinstance(event, OneBotGroupMessageEvent):
         return str(event.group_id), str(event.user_id)
     if OneBotPrivateMessageEvent and isinstance(event, OneBotPrivateMessageEvent):
