@@ -203,10 +203,10 @@ def do_void_sacrifice(conn, cfg, group_id, user_id, draw_count, now, rng) -> Voi
         fresh_player = _require(conn, cfg, group_id, user_id)
         if fresh_player.gold < cost:
             raise NotEnoughGold(f"金币不足(需 {cost},当前 {fresh_player.gold})")
+        fresh_player.gold -= cost
         pity = void_sacrifice_repo.get_pity(conn, group_id, user_id)
         roll = roll_void_sacrifice(count, cfg, rng, pity)
 
-        fresh_player.gold -= cost
         for draw in roll.draws:
             if draw.gold_refund > 0:
                 fresh_player.gold += draw.gold_refund

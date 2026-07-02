@@ -50,3 +50,27 @@ DONE
 - `app/services.py`
 - `tests/test_void_sacrifice_services.py`
 - `.superpowers/sdd/task-3-report.md`
+
+## Task 3 Review Fixes
+
+### Fixes made
+
+- Moved the in-transaction `fresh_player.gold -= cost` step in `app/services.py` to happen before `roll_void_sacrifice(...)`, preserving the existing transaction and rollback behavior.
+- Strengthened `tests/test_void_sacrifice_services.py` with deterministic service tests that verify:
+  - common consumable rewards are persisted to inventory;
+  - gear rewards are persisted to inventory;
+  - gear rewards flow through `services._loot.add_item(...)` and persist with a non-empty affix;
+  - gold is deducted on the in-transaction player before reward rolling starts.
+
+### Covering test commands and results
+
+- `python -m pytest tests/test_void_sacrifice_services.py -q`
+  - Result: 8 passed
+- `python -m pytest tests/test_void_sacrifice_core.py tests/test_void_sacrifice_db.py tests/test_void_sacrifice_services.py -q`
+  - Result: 31 passed
+
+### Files changed
+
+- `app/services.py`
+- `tests/test_void_sacrifice_services.py`
+- `.superpowers/sdd/task-3-report.md`
