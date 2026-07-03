@@ -91,6 +91,7 @@ class WorldBossRewardEntry:
 @dataclass
 class WorldBossStatusResult:
     boss: sqlite3.Row | None
+    bosses: list[sqlite3.Row] = field(default_factory=list)
     damage_entries: list[WorldBossDamageEntry] = field(default_factory=list)
 
 
@@ -561,16 +562,55 @@ def _world_boss_damage_entries(conn, boss) -> list[WorldBossDamageEntry]:
     return entries
 
 
-def do_world_boss_status(conn, cfg, group_id, now) -> WorldBossStatusResult:
-    active_count = world_boss_repo.count_active_players(conn, group_id, now)
-    boss = world_boss_repo.create_or_get_active_boss(conn, group_id, now, active_count)
-    return WorldBossStatusResult(
-        boss=boss,
-        damage_entries=_world_boss_damage_entries(conn, boss),
+def _enabled_world_boss_defs(cfg):
+    return sorted(
+        (boss for boss in cfg.world_bosses.values() if boss.enabled),
+        key=lambda boss: boss.tier,
     )
 
 
-def _world_boss_rewards(conn, cfg, boss, now, rng) -> list[WorldBossRewardEntry]:
+def _select_world_boss_def(cfg, boss_query=""):
+    bosses = _enabled_world_boss_defs(cfg)
+    if not bosses:
+        raise GameError("当前没有可挑战的世界Boss")
+    query = str(boss_query or "").strip()
+    if not query:
+        return bosses[0]
+    normalized = query.lower()
+    for boss in bosses:
+        if query == str(boss.tier):
+            return boss
+        if normalized == boss.key.lower():
+            return boss
+        if query in {boss.name, boss.title}:
+            return boss
+    raise GameError(f"没有找到世界Boss: {query}")
+
+
+def do_world_boss_status(conn, cfg, group_id, now, boss_query="") -> WorldBossStatusResult:
+    active_count = world_boss_repo.count_active_players(conn, group_id, now)
+    selected_def = _select_world_boss_def(cfg, boss_query)
+    bosses = []
+    selected_boss = None
+    for boss_def in _enabled_world_boss_defs(cfg):
+        boss = world_boss_repo.create_or_get_active_boss(
+            conn, group_id, now, active_count, boss_def=boss_def
+        )
+        if boss is None:
+            continue
+        bosses.append(boss)
+        if boss["boss_key"] == selected_def.key:
+            selected_boss = boss
+    if selected_boss is None and not boss_query and bosses:
+        selected_boss = bosses[0]
+    return WorldBossStatusResult(
+        boss=selected_boss,
+        bosses=bosses,
+        damage_entries=_world_boss_damage_entries(conn, selected_boss),
+    )
+
+
+def _world_boss_rewards(conn, cfg, boss, now, rng, boss_def=None) -> list[WorldBossRewardEntry]:
     if world_boss_repo.reward_exists(conn, boss["id"]):
         return []
 
@@ -591,7 +631,12 @@ def _world_boss_rewards(conn, cfg, boss, now, rng) -> list[WorldBossRewardEntry]
             gold = 200
         else:
             reward = roll_world_boss_rewards(
-                damage_percent, player.level, active_count, cfg, rng
+                damage_percent,
+                player.level,
+                active_count,
+                cfg,
+                rng,
+                reward_multiplier=getattr(boss_def, "reward_multiplier", 1.0),
             )
             gold = reward.gold
             for item_id, qty in reward.consumables:
@@ -629,17 +674,22 @@ def _world_boss_rewards(conn, cfg, boss, now, rng) -> list[WorldBossRewardEntry]
     return rewards
 
 
-def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAttackResult:
+def do_attack_world_boss(
+    conn, cfg, group_id, user_id, now, rng, boss_query=""
+) -> WorldBossAttackResult:
     player = _require(conn, cfg, group_id, user_id)
     settle_stamina(player, now, cfg.balance.stamina_regen_minutes, cfg.balance.stamina_max,
                    cfg.balance.stamina_regen_amount)
     if player.stamina < WORLD_BOSS_STAMINA_COST:
         raise GameError(f"体力不足(需 {WORLD_BOSS_STAMINA_COST},当前 {player.stamina})")
 
+    boss_def = _select_world_boss_def(cfg, boss_query)
     active_count = world_boss_repo.count_active_players(conn, group_id, now)
-    boss = world_boss_repo.create_or_get_active_boss(conn, group_id, now, active_count)
+    boss = world_boss_repo.create_or_get_active_boss(
+        conn, group_id, now, active_count, boss_def=boss_def
+    )
     if boss is None:
-        raise GameError("世界Boss正在休整,等待下一次刷新吧。")
+        raise GameError(f"{boss_def.name}正在休整,等待下一次刷新吧。")
     simulation = simulate_world_boss_attack(
         player,
         WorldBossState(
@@ -652,7 +702,7 @@ def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAtt
     )
 
     for _ in range(3):
-        boss = world_boss_repo.get_active_boss(conn, group_id)
+        boss = world_boss_repo.get_active_boss(conn, group_id, boss_def.key)
         if boss is None:
             raise GameError("世界Boss已经被击败,等待下一次刷新吧。")
         effective_damage = min(simulation.damage, boss["hp_current"])
@@ -690,6 +740,7 @@ def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAtt
                 boss["version"],
                 effective_damage,
                 now,
+                cooldown_seconds=boss_def.cooldown_seconds,
             )
             if not updated:
                 conn.rollback()
@@ -709,7 +760,7 @@ def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAtt
             rewards: list[WorldBossRewardEntry] = []
             boss_defeated = updated_boss["status"] == "dead"
             if boss_defeated:
-                rewards = _world_boss_rewards(conn, cfg, updated_boss, now, rng)
+                rewards = _world_boss_rewards(conn, cfg, updated_boss, now, rng, boss_def)
             conn.commit()
             return WorldBossAttackResult(
                 player=fresh_player,
@@ -734,12 +785,16 @@ def do_attack_world_boss(conn, cfg, group_id, user_id, now, rng) -> WorldBossAtt
 
 
 def get_due_world_boss_announcements(conn, cfg, now) -> list[WorldBossStatusResult]:
+    grouped: dict[str, list[sqlite3.Row]] = {}
+    for boss in world_boss_repo.list_due_announcements(conn, now):
+        grouped.setdefault(boss["group_id"], []).append(boss)
     return [
         WorldBossStatusResult(
-            boss=boss,
-            damage_entries=_world_boss_damage_entries(conn, boss),
+            boss=bosses[0],
+            bosses=bosses,
+            damage_entries=_world_boss_damage_entries(conn, bosses[0]),
         )
-        for boss in world_boss_repo.list_due_announcements(conn, now)
+        for bosses in grouped.values()
     ]
 
 

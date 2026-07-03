@@ -151,11 +151,12 @@ def roll_world_boss_rewards(
     active_player_count: int,
     cfg: GameConfig,
     rng: random.Random,
+    reward_multiplier: float = 1.0,
 ) -> WorldBossReward:
     pct = max(0.0, min(1.0, damage_percent))
     base_gold = 800 + player_level * 30
     boss_gold_pool = 20_000 + max(1, active_player_count) * 5_000
-    gold = int(base_gold + boss_gold_pool * pct)
+    gold = int((base_gold + boss_gold_pool * pct) * reward_multiplier)
 
     consumable_pool = _existing_items(cfg, CONSUMABLE_REWARD_POOL)
     consumables: list[tuple[str, int]] = []

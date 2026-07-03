@@ -57,7 +57,7 @@ def get_active_boss(
         """
         SELECT * FROM world_bosses
         WHERE group_id=? AND status='alive'
-        ORDER BY id DESC
+        ORDER BY id ASC
         LIMIT 1
         """,
         (group_id,),
