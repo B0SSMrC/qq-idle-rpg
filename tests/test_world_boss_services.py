@@ -50,6 +50,21 @@ def test_world_boss_status_spawns_group_boss():
     assert result.damage_entries == []
 
 
+def test_world_boss_status_spawns_all_enabled_configured_bosses():
+    conn = _conn()
+    _player(conn)
+
+    result = services.do_world_boss_status(conn, CFG, "g", now=1000)
+
+    assert [boss["boss_key"] for boss in result.bosses] == [
+        "world_boss_abyss_emperor",
+        "burning_warlord",
+        "ocean_dragon",
+        "void_star_lord",
+    ]
+    assert result.boss["boss_key"] == "world_boss_abyss_emperor"
+
+
 def test_attack_world_boss_consumes_stamina_records_damage_and_defeat_penalty():
     conn = _conn()
     _player(conn, stamina=100, gold=1000, hp=300)
@@ -69,6 +84,21 @@ def test_attack_world_boss_consumes_stamina_records_damage_and_defeat_penalty():
     assert boss["hp_current"] == boss["hp_max"] - result.damage
     assert damage_rows[0]["damage"] == result.damage
     assert damage_rows[0]["attack_count"] == 1
+
+
+def test_attack_world_boss_can_select_configured_boss_by_tier():
+    conn = _conn()
+    _player(conn, stamina=100, gold=1000, hp=300)
+    services.do_world_boss_status(conn, CFG, "g", now=1000)
+
+    result = services.do_attack_world_boss(
+        conn, CFG, "g", "u", now=1001, rng=random.Random(1), boss_query="2"
+    )
+    active = world_boss_repo.get_active_boss(conn, "g", "burning_warlord")
+
+    assert result.boss_name == "焚天战魁"
+    assert result.boss_id == active["id"]
+    assert active["hp_current"] == active["hp_max"] - result.damage
 
 
 def test_attack_world_boss_rejects_low_stamina():
@@ -135,8 +165,10 @@ def test_world_boss_announcements_are_due_every_ten_minutes():
     due = services.get_due_world_boss_announcements(conn, CFG, now=1600)
     assert len(due) == 1
     assert due[0].boss["id"] == boss["id"]
+    assert len(due[0].bosses) == 4
 
-    services.mark_world_boss_announced(conn, boss["id"], now=1600)
+    for due_boss in due[0].bosses:
+        services.mark_world_boss_announced(conn, due_boss["id"], now=1600)
     assert services.get_due_world_boss_announcements(conn, CFG, now=2199) == []
 
 
@@ -144,10 +176,11 @@ def test_world_boss_announcements_skip_recent_updates():
     conn = _conn()
     _player(conn)
     boss = services.do_world_boss_status(conn, CFG, "g", now=1000).boss
-    conn.execute(
-        "UPDATE world_bosses SET last_announcement_at=900, updated_at=1598 WHERE id=?",
-        (boss["id"],),
-    )
+    for due_boss in world_boss_repo.list_active_bosses(conn, "g"):
+        conn.execute(
+            "UPDATE world_bosses SET last_announcement_at=900, updated_at=1598 WHERE id=?",
+            (due_boss["id"],),
+        )
     conn.commit()
 
     assert services.get_due_world_boss_announcements(conn, CFG, now=1600) == []

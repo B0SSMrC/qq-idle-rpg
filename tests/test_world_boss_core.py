@@ -84,6 +84,19 @@ def test_roll_world_boss_rewards_scales_gold_with_damage_percent():
     assert len(high.consumables) >= 1
 
 
+def test_roll_world_boss_rewards_applies_reward_multiplier():
+    normal = roll_world_boss_rewards(
+        0.25, player_level=30, active_player_count=3, cfg=CFG,
+        rng=random.Random(1), reward_multiplier=1.0
+    )
+    boosted = roll_world_boss_rewards(
+        0.25, player_level=30, active_player_count=3, cfg=CFG,
+        rng=random.Random(1), reward_multiplier=2.0
+    )
+
+    assert boosted.gold == normal.gold * 2
+
+
 def test_world_boss_rewards_can_include_upgrade_materials():
     seen_material = False
     for seed in range(100):

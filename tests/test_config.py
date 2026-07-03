@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+import shutil
 from game_core.config import load_config, validate_config, ConfigError
 from game_core.models import GameConfig
 
@@ -17,6 +18,75 @@ def test_load_real_config():
     assert "hp_potion" in cfg.items
     assert cfg.items["hp_potion"].heal == 40
     assert any(e.type == "combat" for e in cfg.events)
+    assert "world_boss_abyss_emperor" in cfg.world_bosses
+    assert cfg.world_bosses["world_boss_abyss_emperor"].name == "万劫魔君"
+    assert cfg.world_bosses["world_boss_abyss_emperor"].enabled is True
+
+
+def test_load_world_boss_config_supports_disabled_bosses(tmp_path):
+    data_dir = tmp_path / "data"
+    shutil.copytree(DATA_DIR, data_dir)
+    (data_dir / "world_bosses.yaml").write_text(
+        """
+- key: easy_boss
+  name: 试炼魔君
+  enabled: true
+  tier: 1
+  title: 入门
+  atk: 100
+  def: 30
+  base_hp: 5000
+  hp_per_active_player: 1000
+  cooldown_hours: 6
+  active_hours: 48
+  reward_multiplier: 1.0
+- key: hidden_boss
+  name: 隐藏魔君
+  enabled: false
+  tier: 2
+  title: 隐藏
+  atk: 200
+  def: 60
+  base_hp: 10000
+  hp_per_active_player: 2000
+  cooldown_hours: 8
+  active_hours: 48
+  reward_multiplier: 1.3
+""".strip(),
+        encoding="utf-8",
+    )
+
+    cfg = load_config(data_dir)
+
+    assert list(cfg.world_bosses) == ["easy_boss", "hidden_boss"]
+    assert cfg.world_bosses["easy_boss"].title == "入门"
+    assert cfg.world_bosses["hidden_boss"].enabled is False
+    assert cfg.world_bosses["hidden_boss"].reward_multiplier == 1.3
+
+
+def test_validate_rejects_world_boss_without_enabled_entries(tmp_path):
+    data_dir = tmp_path / "data"
+    shutil.copytree(DATA_DIR, data_dir)
+    (data_dir / "world_bosses.yaml").write_text(
+        """
+- key: hidden_boss
+  name: 隐藏魔君
+  enabled: false
+  tier: 1
+  title: 隐藏
+  atk: 100
+  def: 30
+  base_hp: 5000
+  hp_per_active_player: 1000
+  cooldown_hours: 6
+  active_hours: 48
+  reward_multiplier: 1.0
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="world_bosses"):
+        load_config(data_dir)
 
 
 def test_real_config_extends_to_depth_100():

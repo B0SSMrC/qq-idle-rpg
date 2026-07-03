@@ -727,13 +727,13 @@ cmd_attack_world_boss = on_command(
 )
 
 
-async def _handle_attack_world_boss(bot: Bot, event: Event):
+async def _handle_attack_world_boss(bot: Bot, event: Event, boss_query: str = ""):
     gid, uid = _scope(event)
 
     async def _do():
         async with state.player_lock(gid, uid):
             result = services.do_attack_world_boss(
-                state.conn(), state.CFG, gid, uid, state.now(), random.Random()
+                state.conn(), state.CFG, gid, uid, state.now(), random.Random(), boss_query
             )
             await _reply_to(
                 bot,
@@ -747,7 +747,11 @@ async def _handle_attack_world_boss(bot: Bot, event: Event):
 
 @cmd_attack_world_boss.handle()
 async def handle_attack_world_boss(bot: Bot, event: Event):
-    await _handle_attack_world_boss(bot, event)
+    await _handle_attack_world_boss(
+        bot,
+        event,
+        _arg(event, "进攻世界boss", "攻击世界boss", "挑战世界boss"),
+    )
 
 
 cmd_world_boss_ranking = on_command(
@@ -866,8 +870,8 @@ _HELP_TEXT = """🎮 挂机RPG 指令菜单
 强化 武器/装备 [次数] — 消耗金币和材料强化装备
 升星 武器/装备 — 消耗同名装备或材料提升星级
 虚空献祭 [1/10] — 花金币献祭抽取装备
-世界boss      — 查看世界Boss状态
-进攻世界boss   — 消耗50体力进攻世界Boss
+世界boss      — 查看世界Boss列表
+进攻世界boss [编号/名称] — 消耗50体力进攻指定Boss
 回满生命      — 使用背包药品补满生命
 回满体力      — 花金币购买回气丹并补满体力
 重铸 武器/装备 [次数] — 花金币重随机词条
@@ -944,7 +948,7 @@ async def handle_fuzzy(bot: Bot, event: Event):
     elif parsed.command == "world_boss_status":
         await _handle_world_boss_status(bot, event)
     elif parsed.command == "world_boss_attack":
-        await _handle_attack_world_boss(bot, event)
+        await _handle_attack_world_boss(bot, event, parsed.arg)
     elif parsed.command == "world_boss_ranking":
         await _handle_world_boss_status(bot, event)
     elif parsed.command == "travel":
@@ -998,9 +1002,10 @@ async def _world_boss_announcement_loop():
                     group_id=int(group_id),
                     message=render_world_boss_status(result, state.CFG),
                 )
-                services.mark_world_boss_announced(
-                    state.conn(), result.boss["id"], state.now()
-                )
+                for boss in result.bosses or [result.boss]:
+                    services.mark_world_boss_announced(
+                        state.conn(), boss["id"], state.now()
+                    )
             except Exception:
                 logger.exception("世界Boss定时公告发送失败")
 

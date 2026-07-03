@@ -379,6 +379,28 @@ def render_world_boss_status(result, cfg: GameConfig) -> str:
     if boss is None:
         return choose_template(NO_WORLD_BOSS_TEMPLATES)
 
+    bosses = list(getattr(result, "bosses", None) or [boss])
+    if len(bosses) > 1:
+        lines = ["🌑 世界Boss列表"]
+        for index, row in enumerate(bosses, start=1):
+            hp_current = _boss_value(row, "hp_current")
+            hp_max_value = max(1, _boss_value(row, "hp_max"))
+            hp_pct = hp_current / hp_max_value * 100
+            lines.append(
+                f"{index}. {_boss_value(row, 'name')}  "
+                f"HP {hp_current}/{hp_max_value} ({hp_pct:.1f}%)"
+            )
+        if result.damage_entries:
+            lines.extend(["", f"🏆 {_boss_value(boss, 'name')} 伤害贡献"])
+            for index, entry in enumerate(result.damage_entries[:5], start=1):
+                lines.append(
+                    f"{index}. {entry.player_name}  {entry.damage}伤害  "
+                    f"{entry.damage_percent * 100:.1f}%"
+                )
+        lines.append("")
+        lines.append("发送「进攻世界boss 1」或「进攻世界boss 2」选择目标。")
+        return "\n".join(lines)
+
     hp_current = _boss_value(boss, "hp_current")
     hp_max_value = max(1, _boss_value(boss, "hp_max"))
     hp_pct = hp_current / hp_max_value * 100
