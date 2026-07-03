@@ -168,6 +168,7 @@ from game_core.world_boss import (
     WORLD_BOSS_GOLD_LOSS_PCT,
     WORLD_BOSS_STAMINA_COST,
     WorldBossState,
+    growth_material_weights,
     roll_world_boss_rewards,
     simulate_world_boss_attack,
 )
@@ -562,6 +563,39 @@ def _world_boss_damage_entries(conn, boss) -> list[WorldBossDamageEntry]:
     return entries
 
 
+def _growth_gold_floor(player: Player, boss_def, damage_percent: float) -> int:
+    floor = max(
+        getattr(boss_def, "min_gold", 0),
+        2000 if damage_percent < 0.05 else 0,
+    )
+    depth = max(1, player.max_depth)
+    if depth <= 40:
+        target_gold = 5_000
+    elif depth <= 70:
+        target_gold = 12_000
+    elif depth <= 100:
+        target_gold = 30_000
+    else:
+        target_gold = 60_000
+
+    shortage = max(0, target_gold - player.gold)
+    if shortage <= 0:
+        return floor
+
+    tier = max(1, int(getattr(boss_def, "tier", 1)))
+    bonus = int(shortage * (0.12 + tier * 0.03))
+    return floor + min(bonus, max(1000, floor))
+
+
+def _growth_material_reward_count(boss_def, damage_percent: float) -> int:
+    count = max(1, int(getattr(boss_def, "tier", 1)))
+    if damage_percent >= 0.05:
+        count += 1
+    if damage_percent >= 0.15:
+        count += 1
+    return count
+
+
 def _enabled_world_boss_defs(cfg):
     return sorted(
         (boss for boss in cfg.world_bosses.values() if boss.enabled),
@@ -628,7 +662,7 @@ def _world_boss_rewards(conn, cfg, boss, now, rng, boss_def=None) -> list[WorldB
         items: list[tuple[str, int]] = []
         gear_item_id = ""
         if damage_percent < 0.01:
-            gold = 200
+            gold = 800
         else:
             reward = roll_world_boss_rewards(
                 damage_percent,
@@ -637,6 +671,9 @@ def _world_boss_rewards(conn, cfg, boss, now, rng, boss_def=None) -> list[WorldB
                 cfg,
                 rng,
                 reward_multiplier=getattr(boss_def, "reward_multiplier", 1.0),
+                min_gold=_growth_gold_floor(player, boss_def, damage_percent),
+                material_weights=growth_material_weights(player, boss_def),
+                extra_material_count=_growth_material_reward_count(boss_def, damage_percent),
             )
             gold = reward.gold
             for item_id, qty in reward.consumables:

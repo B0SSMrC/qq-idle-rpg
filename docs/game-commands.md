@@ -682,8 +682,9 @@ item_id 未装备
 - 单次进攻会自动战斗到玩家死亡或 Boss 被击败。
 - 玩家战败会损失当前金币的 5%，并回满生命。
 - Boss 被击败后按玩家累计有效伤害百分比发放奖励。
+- 有效贡献达到 1% 后会触发最低金币奖励；如果玩家金币低于当前成长阶段的建议储备，系统会额外提高金币奖励。
 - 奖励包括金币、消耗品、武器和防具；世界 Boss 稀有装备掉率高于普通探索，且伤害占比越高掉率越高。
-- 高阶 Boss 可通过 `reward_multiplier` 提升金币奖励。
+- 高阶 Boss 可通过 `reward_multiplier` 提升金币奖励，通过 `min_gold` 设置有效贡献最低金币，通过 `material_bias` 调整强化材料掉落倾向。
 
 状态输出：
 
@@ -740,7 +741,13 @@ Boss剩余 HP: 6150/15000
   hp_per_active_player: 5000
   cooldown_hours: 8
   active_hours: 48
-  reward_multiplier: 1.35
+  reward_multiplier: 2.5
+  min_gold: 5000
+  material_bias:
+    refined_iron: 2
+    black_iron: 5
+    star_meteorite: 2
+    divine_forge_crystal: 0
 ```
 
 配置字段说明：
@@ -756,6 +763,8 @@ Boss剩余 HP: 6150/15000
 - `cooldown_hours`：被击败或逃离后的冷却小时数。
 - `active_hours`：刷新后存在多久。
 - `reward_multiplier`：金币奖励倍率。
+- `min_gold`：玩家有效贡献达到 1% 后的最低金币奖励。
+- `material_bias`：材料奖励倾向，只支持 `refined_iron`、`black_iron`、`star_meteorite`、`divine_forge_crystal`，数值越高越容易出现。
 
 ## 回满生命
 

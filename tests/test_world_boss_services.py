@@ -1,3 +1,4 @@
+import json
 import random
 from pathlib import Path
 
@@ -133,6 +134,35 @@ def test_attack_world_boss_defeat_creates_rewards_once():
     assert result.boss_defeated is True
     assert defeated["status"] == "dead"
     assert len(rows) == 1
+
+
+def test_high_tier_world_boss_rewards_growth_gold_and_materials():
+    conn = _conn()
+    p = _player(conn, stamina=100, gold=500, hp=5000)
+    p.level = 60
+    p.max_depth = 95
+    p.inventory = [
+        InventoryItem(item_id="phoenix_feather_armor", equipped=True),
+        InventoryItem(item_id="soul_lock_nails", equipped=True),
+    ]
+    repo.save_player(conn, p)
+    boss = services.do_world_boss_status(conn, CFG, "g", now=1000, boss_query="4").boss
+    conn.execute(
+        "UPDATE world_bosses SET hp_max=500, hp_current=10, atk=1, def=1 WHERE id=?",
+        (boss["id"],),
+    )
+    conn.commit()
+
+    result = services.do_attack_world_boss(
+        conn, CFG, "g", "u", now=1001, rng=random.Random(4), boss_query="4"
+    )
+    row = conn.execute("SELECT * FROM world_boss_rewards WHERE boss_id=?", (boss["id"],)).fetchone()
+    items = json.loads(row["items_json"])
+    material_ids = {item_id for item_id, _ in items}
+
+    assert result.boss_defeated is True
+    assert row["gold"] > CFG.world_bosses["void_star_lord"].min_gold
+    assert material_ids & {"star_meteorite", "divine_forge_crystal"}
 
 
 def test_attack_world_boss_retries_version_conflict(monkeypatch):

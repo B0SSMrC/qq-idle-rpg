@@ -9,7 +9,13 @@
   hp_per_active_player: 3000
   cooldown_hours: 6
   active_hours: 48
-  reward_multiplier: 1.0
+  reward_multiplier: 1.5
+  min_gold: 2500
+  material_bias:
+    refined_iron: 5
+    black_iron: 2
+    star_meteorite: 0
+    divine_forge_crystal: 0
 
 - key: burning_warlord
   name: 焚天战魁
@@ -22,7 +28,13 @@
   hp_per_active_player: 5000
   cooldown_hours: 8
   active_hours: 48
-  reward_multiplier: 1.35
+  reward_multiplier: 2.5
+  min_gold: 5000
+  material_bias:
+    refined_iron: 2
+    black_iron: 5
+    star_meteorite: 2
+    divine_forge_crystal: 0
 
 - key: ocean_dragon
   name: 沧溟龙相
@@ -35,7 +47,13 @@
   hp_per_active_player: 8000
   cooldown_hours: 10
   active_hours: 48
-  reward_multiplier: 1.75
+  reward_multiplier: 4.0
+  min_gold: 9000
+  material_bias:
+    refined_iron: 0
+    black_iron: 3
+    star_meteorite: 5
+    divine_forge_crystal: 1
 
 - key: void_star_lord
   name: 太虚星君
@@ -48,4 +66,10 @@
   hp_per_active_player: 12000
   cooldown_hours: 12
   active_hours: 48
-  reward_multiplier: 2.3
+  reward_multiplier: 6.0
+  min_gold: 15000
+  material_bias:
+    refined_iron: 0
+    black_iron: 1
+    star_meteorite: 5
+    divine_forge_crystal: 3

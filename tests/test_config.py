@@ -21,6 +21,9 @@ def test_load_real_config():
     assert "world_boss_abyss_emperor" in cfg.world_bosses
     assert cfg.world_bosses["world_boss_abyss_emperor"].name == "万劫魔君"
     assert cfg.world_bosses["world_boss_abyss_emperor"].enabled is True
+    assert cfg.world_bosses["void_star_lord"].reward_multiplier == 6.0
+    assert cfg.world_bosses["void_star_lord"].min_gold == 15000
+    assert cfg.world_bosses["void_star_lord"].material_bias["divine_forge_crystal"] == 3
 
 
 def test_load_world_boss_config_supports_disabled_bosses(tmp_path):
@@ -40,6 +43,10 @@ def test_load_world_boss_config_supports_disabled_bosses(tmp_path):
   cooldown_hours: 6
   active_hours: 48
   reward_multiplier: 1.0
+  min_gold: 2500
+  material_bias:
+    refined_iron: 5
+    black_iron: 2
 - key: hidden_boss
   name: 隐藏魔君
   enabled: false
@@ -52,6 +59,10 @@ def test_load_world_boss_config_supports_disabled_bosses(tmp_path):
   cooldown_hours: 8
   active_hours: 48
   reward_multiplier: 1.3
+  min_gold: 5000
+  material_bias:
+    black_iron: 4
+    star_meteorite: 2
 """.strip(),
         encoding="utf-8",
     )
@@ -62,6 +73,36 @@ def test_load_world_boss_config_supports_disabled_bosses(tmp_path):
     assert cfg.world_bosses["easy_boss"].title == "入门"
     assert cfg.world_bosses["hidden_boss"].enabled is False
     assert cfg.world_bosses["hidden_boss"].reward_multiplier == 1.3
+    assert cfg.world_bosses["hidden_boss"].min_gold == 5000
+    assert cfg.world_bosses["hidden_boss"].material_bias["star_meteorite"] == 2
+
+
+def test_validate_rejects_unknown_world_boss_material_bias(tmp_path):
+    data_dir = tmp_path / "data"
+    shutil.copytree(DATA_DIR, data_dir)
+    (data_dir / "world_bosses.yaml").write_text(
+        """
+- key: easy_boss
+  name: Boss A
+  enabled: true
+  tier: 1
+  title: easy
+  atk: 100
+  def: 30
+  base_hp: 5000
+  hp_per_active_player: 1000
+  cooldown_hours: 6
+  active_hours: 48
+  reward_multiplier: 1.0
+  min_gold: 2500
+  material_bias:
+    missing_material: 1
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="material_bias"):
+        load_config(data_dir)
 
 
 def test_validate_rejects_world_boss_without_enabled_entries(tmp_path):

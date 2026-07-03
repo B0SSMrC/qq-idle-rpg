@@ -8,6 +8,12 @@ from game_core.models import (
 
 VALID_EVENT_TYPES = {"combat", "treasure", "trap", "flavor"}
 VALID_SLOTS = {"weapon", "armor", "consumable"}
+WORLD_BOSS_MATERIAL_REWARD_IDS = {
+    "refined_iron",
+    "black_iron",
+    "star_meteorite",
+    "divine_forge_crystal",
+}
 
 
 class ConfigError(Exception):
@@ -88,6 +94,11 @@ def load_config(data_dir: Path) -> GameConfig:
             cooldown_seconds=int(float(boss["cooldown_hours"]) * 60 * 60),
             active_seconds=int(float(boss["active_hours"]) * 60 * 60),
             reward_multiplier=float(boss.get("reward_multiplier", 1.0)),
+            min_gold=int(boss.get("min_gold", 0)),
+            material_bias={
+                str(item_id): int(weight)
+                for item_id, weight in (boss.get("material_bias") or {}).items()
+            },
         )
 
     cfg = GameConfig(
@@ -156,8 +167,20 @@ def validate_config(cfg: GameConfig) -> None:
             or boss.cooldown_seconds <= 0
             or boss.active_seconds <= 0
             or boss.reward_multiplier <= 0
+            or boss.min_gold < 0
         ):
             raise ConfigError(f"world_bosses {boss.key} 数值非法")
+        for item_id, weight in boss.material_bias.items():
+            if item_id not in WORLD_BOSS_MATERIAL_REWARD_IDS:
+                raise ConfigError(
+                    f"world_bosses {boss.key} material_bias unsupported item: {item_id}"
+                )
+            if item_id not in cfg.items:
+                raise ConfigError(
+                    f"world_bosses {boss.key} material_bias unknown item: {item_id}"
+                )
+            if weight < 0:
+                raise ConfigError(f"world_bosses {boss.key} material_bias invalid weight")
 
 
 def find_item_id(cfg: GameConfig, query: str) -> str:

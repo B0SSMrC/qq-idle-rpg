@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
-from game_core.models import GameConfig, Player
+from game_core.models import GameConfig, Player, WorldBossDef
 from game_core import stats
 
 WORLD_BOSS_STAMINA_COST = 50
@@ -16,6 +16,14 @@ CONSUMABLE_REWARD_POOL = [
     "supreme_hp_potion",
     "atk_potion_major",
     "def_potion_major",
+    "refined_iron",
+    "black_iron",
+    "star_meteorite",
+    "divine_forge_crystal",
+]
+
+MATERIAL_REWARD_POOL = [
+    "refined_iron",
     "black_iron",
     "star_meteorite",
     "divine_forge_crystal",
@@ -145,6 +153,85 @@ def _existing_items(cfg: GameConfig, item_ids: list[str]) -> list[str]:
     return [item_id for item_id in item_ids if item_id in cfg.items]
 
 
+def _add_weights(base: dict[str, int], increments: dict[str, int]) -> None:
+    for item_id, value in increments.items():
+        base[item_id] = max(0, base.get(item_id, 0) + int(value))
+
+
+def growth_material_weights(
+    player: Player,
+    boss_def: WorldBossDef | None = None,
+) -> dict[str, int]:
+    depth = max(1, player.max_depth)
+    weights = {item_id: 0 for item_id in MATERIAL_REWARD_POOL}
+
+    if depth <= 40:
+        _add_weights(weights, {"refined_iron": 4, "black_iron": 1})
+        target_enhance = 4
+        target_star = 1
+    elif depth <= 70:
+        _add_weights(weights, {"refined_iron": 3, "black_iron": 4, "star_meteorite": 1})
+        target_enhance = 8
+        target_star = 2
+    elif depth <= 100:
+        _add_weights(weights, {"black_iron": 3, "star_meteorite": 3, "divine_forge_crystal": 1})
+        target_enhance = 12
+        target_star = 3
+    else:
+        _add_weights(weights, {"star_meteorite": 4, "divine_forge_crystal": 2})
+        target_enhance = 16
+        target_star = 4
+
+    equipped = [inv for inv in player.inventory if inv.equipped]
+    if equipped:
+        avg_enhance = sum(inv.enhance_level for inv in equipped) / len(equipped)
+        avg_star = sum(inv.star_level for inv in equipped) / len(equipped)
+        if avg_enhance < target_enhance:
+            if depth <= 40:
+                _add_weights(weights, {"refined_iron": 3})
+            elif depth <= 70:
+                _add_weights(weights, {"refined_iron": 2, "black_iron": 2})
+            elif depth <= 100:
+                _add_weights(weights, {"black_iron": 2, "star_meteorite": 2})
+            else:
+                _add_weights(weights, {"star_meteorite": 3, "divine_forge_crystal": 1})
+        if avg_star < target_star:
+            if depth <= 70:
+                _add_weights(weights, {"black_iron": 2})
+            elif depth <= 100:
+                _add_weights(weights, {"star_meteorite": 2, "divine_forge_crystal": 1})
+            else:
+                _add_weights(weights, {"divine_forge_crystal": 2})
+
+    if boss_def is not None:
+        _add_weights(weights, boss_def.material_bias)
+
+    return {item_id: weight for item_id, weight in weights.items() if weight > 0}
+
+
+def _weighted_material_choice(
+    cfg: GameConfig,
+    rng: random.Random,
+    material_weights: dict[str, int] | None,
+) -> str:
+    weights = {
+        item_id: weight
+        for item_id, weight in (material_weights or {}).items()
+        if weight > 0 and item_id in cfg.items
+    }
+    if not weights:
+        fallback = _existing_items(cfg, MATERIAL_REWARD_POOL)
+        return rng.choice(fallback) if fallback else ""
+    total = sum(weights.values())
+    roll = rng.randint(1, total)
+    running = 0
+    for item_id, weight in weights.items():
+        running += weight
+        if roll <= running:
+            return item_id
+    return next(iter(weights))
+
+
 def roll_world_boss_rewards(
     damage_percent: float,
     player_level: int,
@@ -152,17 +239,24 @@ def roll_world_boss_rewards(
     cfg: GameConfig,
     rng: random.Random,
     reward_multiplier: float = 1.0,
+    min_gold: int = 0,
+    material_weights: dict[str, int] | None = None,
+    extra_material_count: int = 0,
 ) -> WorldBossReward:
     pct = max(0.0, min(1.0, damage_percent))
     base_gold = 800 + player_level * 30
     boss_gold_pool = 20_000 + max(1, active_player_count) * 5_000
-    gold = int((base_gold + boss_gold_pool * pct) * reward_multiplier)
+    gold = max(int(min_gold), int((base_gold + boss_gold_pool * pct) * reward_multiplier))
 
     consumable_pool = _existing_items(cfg, CONSUMABLE_REWARD_POOL)
     consumables: list[tuple[str, int]] = []
     if consumable_pool:
         for _ in range(rng.randint(1, 3)):
             consumables.append((rng.choice(consumable_pool), 1))
+    for _ in range(max(0, int(extra_material_count))):
+        item_id = _weighted_material_choice(cfg, rng, material_weights)
+        if item_id:
+            consumables.append((item_id, 1))
 
     chances = reward_drop_chances(pct)
     gear_item_id = ""

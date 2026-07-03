@@ -92,6 +92,8 @@ class WorldBossDef:
     cooldown_seconds: int
     active_seconds: int
     reward_multiplier: float = 1.0
+    min_gold: int = 0
+    material_bias: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass

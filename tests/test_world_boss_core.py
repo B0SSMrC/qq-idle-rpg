@@ -7,6 +7,7 @@ from game_core.world_boss import (
     WORLD_BOSS_GOLD_LOSS_PCT,
     WORLD_BOSS_STAMINA_COST,
     WorldBossState,
+    growth_material_weights,
     reward_drop_chances,
     roll_world_boss_rewards,
     simulate_world_boss_attack,
@@ -115,6 +116,45 @@ def test_world_boss_rewards_can_include_upgrade_materials():
             break
 
     assert seen_material
+
+
+def test_growth_material_weights_follow_depth_gear_and_boss_bias():
+    boss_def = CFG.world_bosses["void_star_lord"]
+    player = Player(
+        group_id="g",
+        user_id="u",
+        name="cxh",
+        level=18,
+        current_hp=1000,
+        max_depth=95,
+        gold=500,
+    )
+    player.inventory = [
+        InventoryItem(item_id="phoenix_feather_armor", equipped=True, enhance_level=0, star_level=0),
+        InventoryItem(item_id="soul_lock_nails", equipped=True, enhance_level=0, star_level=0),
+    ]
+
+    weights = growth_material_weights(player, boss_def)
+
+    assert weights["star_meteorite"] > weights["black_iron"]
+    assert weights["divine_forge_crystal"] >= boss_def.material_bias["divine_forge_crystal"]
+
+
+def test_roll_world_boss_rewards_honors_min_gold_and_extra_material_weights():
+    reward = roll_world_boss_rewards(
+        0.02,
+        player_level=30,
+        active_player_count=3,
+        cfg=CFG,
+        rng=random.Random(3),
+        reward_multiplier=1.0,
+        min_gold=9000,
+        material_weights={"star_meteorite": 10},
+        extra_material_count=3,
+    )
+
+    assert reward.gold >= 9000
+    assert sum(qty for item_id, qty in reward.consumables if item_id == "star_meteorite") >= 3
 
 
 def _current_cxh_player():
