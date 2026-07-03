@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 from game_core.models import (
-    Balance, MonsterDef, DropDef, EventDef, ItemDef, GameConfig,
+    Balance, MonsterDef, DropDef, EventDef, ItemDef, GameConfig, WorldBossDef,
 )
 
 VALID_EVENT_TYPES = {"combat", "treasure", "trap", "flavor"}
@@ -72,7 +72,31 @@ def load_config(data_dir: Path) -> GameConfig:
             buff_steps=it.get("buff_steps", 0),
         )
 
-    cfg = GameConfig(balance=balance, monsters=monsters, events=events, items=items)
+    world_bosses: dict[str, WorldBossDef] = {}
+    for boss in _load_yaml(data_dir / "world_bosses.yaml"):
+        key = boss["key"]
+        world_bosses[key] = WorldBossDef(
+            key=key,
+            name=boss["name"],
+            enabled=bool(boss.get("enabled", True)),
+            tier=int(boss["tier"]),
+            title=boss.get("title", ""),
+            atk=int(boss["atk"]),
+            defense=int(boss["def"]),
+            base_hp=int(boss["base_hp"]),
+            hp_per_active_player=int(boss["hp_per_active_player"]),
+            cooldown_seconds=int(float(boss["cooldown_hours"]) * 60 * 60),
+            active_seconds=int(float(boss["active_hours"]) * 60 * 60),
+            reward_multiplier=float(boss.get("reward_multiplier", 1.0)),
+        )
+
+    cfg = GameConfig(
+        balance=balance,
+        monsters=monsters,
+        events=events,
+        items=items,
+        world_bosses=world_bosses,
+    )
     validate_config(cfg)
     return cfg
 
@@ -111,6 +135,29 @@ def validate_config(cfg: GameConfig) -> None:
             raise ConfigError(f"事件 {e.id} reward_gold 范围非法")
     if not any(e.type == "combat" for e in cfg.events):
         raise ConfigError("至少需要一个 combat 事件")
+    if not cfg.world_bosses:
+        raise ConfigError("world_bosses 至少需要配置一个 Boss")
+    if not any(b.enabled for b in cfg.world_bosses.values()):
+        raise ConfigError("world_bosses 至少需要一个 enabled=true 的 Boss")
+    seen_tiers: set[int] = set()
+    for boss in cfg.world_bosses.values():
+        if boss.tier in seen_tiers:
+            raise ConfigError(f"world_bosses tier 重复: {boss.tier}")
+        seen_tiers.add(boss.tier)
+        if not boss.key.strip() or not boss.name.strip():
+            raise ConfigError("world_bosses key/name 不能为空")
+        if boss.tier <= 0:
+            raise ConfigError(f"world_bosses {boss.key} tier 必须为正")
+        if (
+            boss.atk <= 0
+            or boss.defense < 0
+            or boss.base_hp <= 0
+            or boss.hp_per_active_player < 0
+            or boss.cooldown_seconds <= 0
+            or boss.active_seconds <= 0
+            or boss.reward_multiplier <= 0
+        ):
+            raise ConfigError(f"world_bosses {boss.key} 数值非法")
 
 
 def find_item_id(cfg: GameConfig, query: str) -> str:

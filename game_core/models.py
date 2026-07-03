@@ -79,11 +79,28 @@ class Balance:
 
 
 @dataclass
+class WorldBossDef:
+    key: str
+    name: str
+    enabled: bool
+    tier: int
+    title: str
+    atk: int
+    defense: int
+    base_hp: int
+    hp_per_active_player: int
+    cooldown_seconds: int
+    active_seconds: int
+    reward_multiplier: float = 1.0
+
+
+@dataclass
 class GameConfig:
     balance: Balance
     monsters: dict[str, MonsterDef]
     events: list[EventDef]
     items: dict[str, ItemDef]
+    world_bosses: dict[str, WorldBossDef] = field(default_factory=dict)
 
 
 # ---------- 玩家状态(可变,内存表示) ----------
