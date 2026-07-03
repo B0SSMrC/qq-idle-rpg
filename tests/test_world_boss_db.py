@@ -1,5 +1,10 @@
+from pathlib import Path
+
+from game_core.config import load_config
 from storage import db
 from storage import world_boss_repo
+
+CFG = load_config(Path("data"))
 
 
 def test_init_db_creates_world_boss_tables():
@@ -33,6 +38,57 @@ def test_create_or_get_active_boss_is_group_scoped_and_idempotent():
     assert first["group_id"] == "g1"
     assert first["hp_max"] == 18000
     assert other_group["id"] != first["id"]
+
+
+def test_create_or_get_active_boss_is_boss_key_scoped():
+    conn = db.get_conn(":memory:")
+    db.init_db(conn)
+    easy = CFG.world_bosses["world_boss_abyss_emperor"]
+    hard = CFG.world_bosses["burning_warlord"]
+
+    first_easy = world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=1000, active_player_count=2, boss_def=easy
+    )
+    second_easy = world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=1010, active_player_count=5, boss_def=easy
+    )
+    hard_boss = world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=1010, active_player_count=2, boss_def=hard
+    )
+
+    assert first_easy["id"] == second_easy["id"]
+    assert hard_boss["id"] != first_easy["id"]
+    assert hard_boss["boss_key"] == "burning_warlord"
+    assert hard_boss["hp_max"] == hard.base_hp + 2 * hard.hp_per_active_player
+    assert [row["boss_key"] for row in world_boss_repo.list_active_bosses(conn, "g1")] == [
+        "world_boss_abyss_emperor",
+        "burning_warlord",
+    ]
+
+
+def test_boss_cooldown_is_scoped_to_boss_key():
+    conn = db.get_conn(":memory:")
+    db.init_db(conn)
+    easy = CFG.world_bosses["world_boss_abyss_emperor"]
+    hard = CFG.world_bosses["burning_warlord"]
+    easy_boss = world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=1000, active_player_count=1, boss_def=easy
+    )
+    conn.execute(
+        "UPDATE world_bosses SET status='dead', hp_current=0, next_spawn_at=? WHERE id=?",
+        (1000 + easy.cooldown_seconds, easy_boss["id"]),
+    )
+    conn.commit()
+
+    assert world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=2000, active_player_count=1, boss_def=easy
+    ) is None
+    hard_boss = world_boss_repo.create_or_get_active_boss(
+        conn, "g1", now=2000, active_player_count=1, boss_def=hard
+    )
+
+    assert hard_boss is not None
+    assert hard_boss["boss_key"] == "burning_warlord"
 
 
 def test_create_or_get_active_boss_retunes_legacy_alive_boss():

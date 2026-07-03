@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from game_core.models import WorldBossDef
+
 WORLD_BOSS_KEY = "world_boss_abyss_emperor"
 WORLD_BOSS_NAME = "万劫魔君"
 WORLD_BOSS_ATK = 180
@@ -13,6 +15,21 @@ WORLD_BOSS_ACTIVE_SECONDS = 48 * 60 * 60
 WORLD_BOSS_ANNOUNCE_SECONDS = 10 * 60
 WORLD_BOSS_RECENT_UPDATE_GRACE_SECONDS = 3
 
+DEFAULT_WORLD_BOSS_DEF = WorldBossDef(
+    key=WORLD_BOSS_KEY,
+    name=WORLD_BOSS_NAME,
+    enabled=True,
+    tier=1,
+    title="入门",
+    atk=WORLD_BOSS_ATK,
+    defense=WORLD_BOSS_DEF,
+    base_hp=WORLD_BOSS_BASE_HP,
+    hp_per_active_player=WORLD_BOSS_HP_PER_ACTIVE_PLAYER,
+    cooldown_seconds=WORLD_BOSS_COOLDOWN_SECONDS,
+    active_seconds=WORLD_BOSS_ACTIVE_SECONDS,
+    reward_multiplier=1.0,
+)
+
 
 def _row(conn: sqlite3.Connection, boss_id: int) -> sqlite3.Row:
     row = conn.execute("SELECT * FROM world_bosses WHERE id=?", (boss_id,)).fetchone()
@@ -21,7 +38,21 @@ def _row(conn: sqlite3.Connection, boss_id: int) -> sqlite3.Row:
     return row
 
 
-def get_active_boss(conn: sqlite3.Connection, group_id: str) -> sqlite3.Row | None:
+def get_active_boss(
+    conn: sqlite3.Connection,
+    group_id: str,
+    boss_key: str | None = None,
+) -> sqlite3.Row | None:
+    if boss_key:
+        return conn.execute(
+            """
+            SELECT * FROM world_bosses
+            WHERE group_id=? AND boss_key=? AND status='alive'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (group_id, boss_key),
+        ).fetchone()
     return conn.execute(
         """
         SELECT * FROM world_bosses
@@ -33,8 +64,19 @@ def get_active_boss(conn: sqlite3.Connection, group_id: str) -> sqlite3.Row | No
     ).fetchone()
 
 
-def _target_hp_max(active_player_count: int) -> int:
-    return WORLD_BOSS_BASE_HP + max(1, active_player_count) * WORLD_BOSS_HP_PER_ACTIVE_PLAYER
+def list_active_bosses(conn: sqlite3.Connection, group_id: str) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT * FROM world_bosses
+        WHERE group_id=? AND status='alive'
+        ORDER BY id ASC
+        """,
+        (group_id,),
+    ).fetchall()
+
+
+def _target_hp_max(active_player_count: int, boss_def: WorldBossDef) -> int:
+    return boss_def.base_hp + max(1, active_player_count) * boss_def.hp_per_active_player
 
 
 def _scale_positive_int(value: int, old_total: int, new_total: int) -> int:
@@ -46,13 +88,14 @@ def _scale_positive_int(value: int, old_total: int, new_total: int) -> int:
 def _retune_alive_boss_if_needed(
     conn: sqlite3.Connection,
     boss: sqlite3.Row,
+    boss_def: WorldBossDef,
     now: int,
     active_player_count: int,
 ) -> sqlite3.Row:
-    target_hp_max = _target_hp_max(active_player_count)
+    target_hp_max = _target_hp_max(active_player_count, boss_def)
     old_hp_max = max(1, int(boss["hp_max"]))
     oversized_legacy_hp = old_hp_max > target_hp_max * 3
-    stale_stats = int(boss["atk"]) != WORLD_BOSS_ATK or int(boss["def"]) != WORLD_BOSS_DEF
+    stale_stats = int(boss["atk"]) != boss_def.atk or int(boss["def"]) != boss_def.defense
     if not oversized_legacy_hp and not stale_stats:
         return boss
 
@@ -74,8 +117,8 @@ def _retune_alive_boss_if_needed(
         (
             target_hp_max,
             hp_current,
-            WORLD_BOSS_ATK,
-            WORLD_BOSS_DEF,
+            boss_def.atk,
+            boss_def.defense,
             now,
             boss["id"],
         ),
@@ -100,8 +143,13 @@ def create_or_get_active_boss(
     group_id: str,
     now: int,
     active_player_count: int,
+    boss_def: WorldBossDef | None = None,
 ) -> sqlite3.Row | None:
-    existing = get_active_boss(conn, group_id)
+    boss_def = boss_def or DEFAULT_WORLD_BOSS_DEF
+    if not boss_def.enabled:
+        return None
+
+    existing = get_active_boss(conn, group_id, boss_def.key)
     if existing is not None:
         if existing["expires_at"] <= now:
             conn.execute(
@@ -112,25 +160,28 @@ def create_or_get_active_boss(
                     updated_at=?
                 WHERE id=? AND status='alive'
                 """,
-                (now + WORLD_BOSS_COOLDOWN_SECONDS, now, existing["id"]),
+                (now + boss_def.cooldown_seconds, now, existing["id"]),
             )
             conn.commit()
             return None
-        return _retune_alive_boss_if_needed(conn, existing, now, active_player_count)
+        return _retune_alive_boss_if_needed(conn, existing, boss_def, now, active_player_count)
 
     cooldown = conn.execute(
         """
         SELECT * FROM world_bosses
-        WHERE group_id=? AND status IN ('dead', 'escaped') AND next_spawn_at>?
+        WHERE group_id=?
+          AND boss_key=?
+          AND status IN ('dead', 'escaped')
+          AND next_spawn_at>?
         ORDER BY next_spawn_at DESC
         LIMIT 1
         """,
-        (group_id, now),
+        (group_id, boss_def.key, now),
     ).fetchone()
     if cooldown is not None:
         return None
 
-    hp_max = _target_hp_max(active_player_count)
+    hp_max = _target_hp_max(active_player_count, boss_def)
     cur = conn.execute(
         """
         INSERT INTO world_bosses (
@@ -140,16 +191,16 @@ def create_or_get_active_boss(
         """,
         (
             group_id,
-            WORLD_BOSS_KEY,
-            WORLD_BOSS_NAME,
+            boss_def.key,
+            boss_def.name,
             hp_max,
             hp_max,
-            WORLD_BOSS_ATK,
-            WORLD_BOSS_DEF,
+            boss_def.atk,
+            boss_def.defense,
             "alive",
             0,
             now,
-            now + WORLD_BOSS_ACTIVE_SECONDS,
+            now + boss_def.active_seconds,
             0,
             now,
             now,
@@ -204,6 +255,7 @@ def apply_boss_damage(
     old_version: int,
     effective_damage: int,
     now: int,
+    cooldown_seconds: int = WORLD_BOSS_COOLDOWN_SECONDS,
 ) -> bool:
     cur = conn.execute(
         """
@@ -227,7 +279,7 @@ def apply_boss_damage(
             effective_damage,
             effective_damage,
             effective_damage,
-            now + WORLD_BOSS_COOLDOWN_SECONDS,
+            now + cooldown_seconds,
             now,
             boss_id,
             old_version,
