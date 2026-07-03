@@ -154,6 +154,12 @@ def test_fuzzy_void_sacrifice_aliases():
     assert parse_fuzzy_command("十连献祭").arg == "10"
 
 
+def test_world_boss_attack_accepts_selector_arg():
+    assert_parsed("进攻世界boss 2", "world_boss_attack", "2")
+    assert_parsed("攻击世界boss 焚天战魁", "world_boss_attack", "焚天战魁")
+    assert_parsed("挑战世界boss太虚星君", "world_boss_attack", "太虚星君")
+
+
 def test_equipment_progression_commands_are_supported():
     assert_parsed("分解装备", "dismantle_gear", "all")
     assert_parsed("一键分解装备", "dismantle_gear", "all")

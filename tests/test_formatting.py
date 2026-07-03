@@ -326,6 +326,33 @@ def test_render_world_boss_status_lists_hp_and_damage():
     assert "20.0%" in text
 
 
+def test_render_world_boss_status_lists_multiple_bosses():
+    first = {
+        "boss_key": "world_boss_abyss_emperor",
+        "name": "万劫魔君",
+        "hp_current": 800,
+        "hp_max": 1000,
+    }
+    second = {
+        "boss_key": "burning_warlord",
+        "name": "焚天战魁",
+        "hp_current": 1800,
+        "hp_max": 2000,
+    }
+    result = WorldBossStatusResult(
+        boss=first,
+        bosses=[first, second],
+        damage_entries=[],
+    )
+
+    text = render_world_boss_status(result, CFG)
+
+    assert "世界Boss列表" in text
+    assert "1. 万劫魔君" in text
+    assert "2. 焚天战魁" in text
+    assert "进攻世界boss 2" in text
+
+
 def test_render_world_boss_attack_shows_defeat_penalty_and_rewards():
     result = WorldBossAttackResult(
         player=_player(),
